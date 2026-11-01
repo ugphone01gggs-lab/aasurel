@@ -17,11 +17,6 @@ jobs:
         - name: Android64
           os: ubuntu-latest
           target: Android64
-        - name: macOS
-          os: macos-latest
-        - name: iOS
-          os: macos-latest
-          target: iOS
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     steps:
@@ -29,7 +24,7 @@ jobs:
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
-          sdk: given  # the Geode version in mod.json
+          sdk: given
           cli: latest
           combine: true
           target: ${{ matrix.config.target }}

@@ -1,4 +1,4 @@
-// Click Before Frames v2.99.1 (wave auto-hold, easier wave spam, upstream 2.99.0 base)
+// Click Before Frames v2.99.2 (wave auto-hold works in normal runs, looser checks, better logs)
 //
 // When you click (or release, in wave / robot), a hidden "ghost" player is simulated
 // ahead with your input. If the ghost dies, the input is retried with 1..N ticks of
@@ -4603,11 +4603,7 @@ namespace {
         if (!buf.autoHolding || !buf.waveAutoHold || !layer || !p1 || p1->m_isDead) {
             return;
         }
-        if (!layer->m_isPracticeMode && !buf.autoNormalRuns) {
-            buf.autoHolding = false;
-            return;
-        }
-        if (!buf.queue.empty() || !buf.appliedInput || !buf.ghost1) {
+        if (!buf.queue.empty() || !buf.appliedInput) {
             return;
         }
         // left wave
@@ -4643,39 +4639,53 @@ namespace {
 
     // Called from intercept when the player releases in wave: return true to swallow the
     // release and keep holding if letting go would die.
+    // v2.99.2: works in normal runs too (not only practice), tolerates a pending queue,
+    // and logs why it skipped so you can see it in F9.
     bool waveHoldUnsafeRelease(PlayLayer* layer, PlayerObject* p1, PlayerObject* p2, bool dual) {
         if (!buf.waveAutoHold || buf.autoHolding || buf.autoReleased) {
             return false;
         }
-        if (!layer->m_isPracticeMode && !buf.autoNormalRuns) {
+        // Must currently be held in the game (or we just had a delayed hold still applied)
+        if (!buf.appliedInput) {
+            if (buf.explain) {
+                say("AUTO hold skip: game was not holding");
+            }
             return false;
         }
-        if (!buf.appliedInput || !buf.ghost1 || !buf.queue.empty()) {
-            return false;
+        // Drop any waiting delayed inputs — a release is happening now
+        if (!buf.queue.empty()) {
+            buf.queue.clear();
+            buf.shift = 0;
+            buf.releaseShift = 0;
         }
         bool mini = (p1->m_isDart && p1->m_vehicleSize < 1.f) || (p2 && p2->m_isDart && p2->m_vehicleSize < 1.f);
         int window = st(std::clamp(buf.waveHoldWindow, 6, 64));
-        int horizon = fullWaveHorizon(mini);
         SimEnd end;
-        // Does releasing now die soon?
+        buf.sawMover = false;
         buf.trackMovers = buf.avoidMovers;
+        // Release now — how long until death?
         int release = simulateOrbs(layer, p1, p2, dual, 0, false, window, -1, window, &end);
-        // Does holding survive that window?
+        // Keep holding — how long until death?
         int hold = simulateOrbs(layer, p1, p2, dual, 0, true, window, -1, window, &end);
         buf.trackMovers = false;
         if (buf.avoidMovers && buf.sawMover) {
+            if (buf.explain) {
+                say("AUTO hold skip: moving objects ahead");
+            }
             return false;
         }
-        // Release dies inside the window, hold lives longer → keep holding
-        if (release < window && hold > release + st(2)) {
+        // Release dies inside the window and holding clearly lives longer → keep holding
+        // Margin of 1 tick is enough (was 2; too strict on tight wave).
+        if (release < window && hold >= release + st(1)) {
             buf.autoHolding = true;
-            // Stay held in the game
-            if (!buf.appliedInput) {
-                sendButton(layer, true);
-            }
             buf.appliedInput = true;
+            // Ensure the game is still holding
+            sendButton(layer, true);
             say("AUTO hold: release dies in {}t, holding lives {}t — kept held", release, hold);
             return true;
+        }
+        if (buf.explain) {
+            say("AUTO hold skip: release {}t / hold {}t (window {}t)", release, hold, window);
         }
         return false;
     }

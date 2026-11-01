@@ -6,7 +6,7 @@
 		"mac": "2.2081",
 		"ios": "2.2081"
 	},
-	"version": "v2.99.1",
+	"version": "v2.99.2",
 	"id": "basu.input-buffer",
 	"name": "Click Before Frames",
 	"developer": "BASU",
@@ -100,7 +100,7 @@
 		"wave-auto-hold": {
 			"type": "bool",
 			"name": "Wave auto-hold (unsafe release)",
-			"description": "If you release in wave and letting go would die soon, the mod keeps holding for you until releasing is safe, then lets go. Practice only unless 'Auto-release in normal runs' is on.",
+			"description": "If you release in wave and letting go would die soon, the mod keeps holding until releasing is safe, then lets go. Works in practice and normal runs. Turn on Explain inputs to see AUTO hold / skip lines in the F9 console.",
 			"default": true
 		},
 		"wave-auto-hold-window": {
