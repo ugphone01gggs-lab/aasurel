@@ -6,7 +6,7 @@
 		"mac": "2.2081",
 		"ios": "2.2081"
 	},
-	"version": "v2.99.2",
+	"version": "v2.99.4",
 	"id": "basu.input-buffer",
 	"name": "Click Before Frames",
 	"developer": "BASU",
@@ -110,6 +110,40 @@
 			"default": 24,
 			"min": 6,
 			"max": 64
+		},
+		"wave-path-assist": {
+			"type": "bool",
+			"name": "Wave path assist",
+			"description": "While in wave, if your current hold/release will die soon and flipping survives longer, the mod flips the input for you. Works in practice and normal runs.",
+			"default": true
+		},
+		"wave-path-assist-window": {
+			"type": "int",
+			"name": "Wave path assist look-ahead (ticks)",
+			"description": "How far ahead path assist looks for a crash. Higher = steers earlier. 4 ticks = 1 frame at 60fps.",
+			"default": 28,
+			"min": 8,
+			"max": 64
+		},
+		"ship-path-assist": {
+			"type": "bool",
+			"name": "Ship path assist",
+			"description": "While in ship, if holding or releasing will die soon and the opposite input survives clearly longer, the mod presses or releases for you (helps over/under-steering). Works even if Ship buffer is off.",
+			"default": true
+		},
+		"ufo-path-assist": {
+			"type": "bool",
+			"name": "UFO path assist",
+			"description": "While in UFO, if not flapping (or holding) will die soon and flipping survives longer, the mod presses or releases for you. Works in practice and normal runs.",
+			"default": true
+		},
+		"flyer-path-assist-window": {
+			"type": "int",
+			"name": "Ship / UFO path assist look-ahead (ticks)",
+			"description": "Look-ahead for ship and UFO path assist. Higher = steers earlier. 4 ticks = 1 frame at 60fps.",
+			"default": 32,
+			"min": 8,
+			"max": 80
 		},
 		"auto-release-window": {
 			"type": "int",

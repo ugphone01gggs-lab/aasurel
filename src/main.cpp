@@ -1,4 +1,4 @@
-// Click Before Frames v2.99.2 (wave auto-hold works in normal runs, looser checks, better logs)
+// Click Before Frames v2.99.4 (path assist: wave + ship + UFO)
 //
 // When you click (or release, in wave / robot), a hidden "ghost" player is simulated
 // ahead with your input. If the ghost dies, the input is retried with 1..N ticks of
@@ -223,6 +223,12 @@ namespace {
         bool waveAutoHold = true;    // v2.99.1: if release would die, keep holding until safe
         int waveHoldWindow = 24;     // v2.99.1: look-ahead for unsafe-release check
         bool autoHolding = false;    // v2.99.1: currently holding because release was unsafe
+        bool wavePathAssist = true;  // v2.99.3: continuous wave steering toward safer path
+        int wavePathWindow = 28;     // v2.99.3: look-ahead for path assist
+        int wavePathCooldown = 0;     // v2.99.3: ticks before next assist flip
+        bool shipPathAssist = true;  // v2.99.4: same idea for ship
+        bool ufoPathAssist = true;   // v2.99.4: same idea for UFO
+        int flyerPathWindow = 32;    // v2.99.4: look-ahead for ship/UFO assist
         bool autoClick = false;      // v2.80: click for you at the last moment when you didn't
         bool autoClicked = false;    // v2.80: we clicked for you; your own late click is swallowed
         int autoClickTick = 0;       // v2.80: when that was
@@ -596,6 +602,11 @@ namespace {
         buf.autoRelease = mod->getSettingValue<bool>("wave-auto-release");
         buf.waveAutoHold = mod->getSettingValue<bool>("wave-auto-hold");
         buf.waveHoldWindow = static_cast<int>(mod->getSettingValue<int64_t>("wave-auto-hold-window"));
+        buf.wavePathAssist = mod->getSettingValue<bool>("wave-path-assist");
+        buf.wavePathWindow = static_cast<int>(mod->getSettingValue<int64_t>("wave-path-assist-window"));
+        buf.shipPathAssist = mod->getSettingValue<bool>("ship-path-assist");
+        buf.ufoPathAssist = mod->getSettingValue<bool>("ufo-path-assist");
+        buf.flyerPathWindow = static_cast<int>(mod->getSettingValue<int64_t>("flyer-path-assist-window"));
         buf.autoClick = mod->getSettingValue<bool>("auto-click");
         buf.autoWindow = static_cast<int>(mod->getSettingValue<int64_t>("auto-release-window"));
         buf.driftCheck = mod->getSettingValue<bool>("drift-check");
@@ -850,6 +861,7 @@ namespace {
         buf.autoReleased = false;
         buf.autoClicked = false;
         buf.autoHolding = false;
+        buf.wavePathCooldown = 0;
         buf.recordPath = nullptr;
         watched.clear();
         forgetMoveTriggers();
@@ -4596,6 +4608,73 @@ namespace {
         refreshPanel();
     }
 
+    // v2.99.3/v2.99.4 path assist for wave / ship / UFO:
+    // if the current hold/release dies soon and the opposite input survives clearly longer,
+    // flip the button for the player (steers away from floor/ceiling clips and over-spam).
+    void tryWavePathAssist(PlayLayer* layer, PlayerObject* p1) {
+        if (!layer || !p1 || p1->m_isDead || layer->m_isPlatformer) {
+            return;
+        }
+        if (!buf.queue.empty() || !buf.isPlayer1 || buf.autoReleased || buf.autoClicked) {
+            return;
+        }
+        if (layer->m_level && layer->m_level->m_twoPlayerMode) {
+            return;
+        }
+        if (buf.wavePathCooldown > 0) {
+            --buf.wavePathCooldown;
+            return;
+        }
+        bool dual = layer->m_gameState.m_isDualMode && layer->m_player2;
+        auto* p2 = dual ? layer->m_player2 : nullptr;
+        if (p1->m_isDashing || (p2 && p2->m_isDashing)) {
+            return;
+        }
+        bool wave = p1->m_isDart || (p2 && p2->m_isDart);
+        bool ship = p1->m_isShip || (p2 && p2->m_isShip);
+        bool ufo = p1->m_isBird || (p2 && p2->m_isBird);
+        if (wave && !buf.wavePathAssist) return;
+        if (ship && !buf.shipPathAssist) return;
+        if (ufo && !buf.ufoPathAssist) return;
+        if (!wave && !ship && !ufo) return;
+        // Prefer a single mode if dual mixes oddly
+        if (wave && (ship || ufo)) {
+            // actual vehicle of p1 wins
+            ship = p1->m_isShip;
+            ufo = p1->m_isBird;
+            wave = p1->m_isDart;
+        }
+
+        int window = st(std::clamp(wave ? buf.wavePathWindow : buf.flyerPathWindow, 8, 80));
+        bool holding = buf.appliedInput;
+        SimEnd end;
+        buf.sawMover = false;
+        buf.trackMovers = buf.avoidMovers;
+        int cur = simulateOrbs(layer, p1, p2, dual, 0, holding, window, -1, window, &end);
+        int alt = simulateOrbs(layer, p1, p2, dual, 0, !holding, window, -1, window, &end);
+        buf.trackMovers = false;
+        if (buf.avoidMovers && buf.sawMover) {
+            return;
+        }
+        // Need a clear gain from flipping
+        int margin = st(wave ? 4 : 3);
+        if (cur < window && alt >= cur + margin) {
+            bool next = !holding;
+            buf.appliedInput = next;
+            if (next) {
+                buf.autoHolding = true;
+            } else {
+                buf.autoReleased = true;
+                buf.autoHolding = false;
+            }
+            sendButton(layer, next);
+            buf.wavePathCooldown = st(wave ? 4 : 5);
+            char const* mode = wave ? "wave" : ship ? "ship" : "ufo";
+            say("PATH assist ({}): {} dies in {}t, {} lives {}t → flipped",
+                mode, holding ? "hold" : "release", cur, next ? "hold" : "release", alt);
+        }
+    }
+
     // v2.99.1 wave auto-hold: if the player releases and that would die soon, keep holding
     // until a release is safe, then let go. Complements wave auto-release (which lets go
     // when holding is the danger).
@@ -4833,11 +4912,16 @@ namespace {
         bool twoPlayer = layer->m_level && layer->m_level->m_twoPlayerMode;
         bool dual = !twoPlayer && layer->m_gameState.m_isDualMode && layer->m_player2;
         if (!buf.shipBuffer && (player->m_isShip || (dual && layer->m_player2->m_isShip))) {
+            // v2.99.4: still run path assist for ship even when ship buffer is off
+            if (buf.queue.empty()) {
+                tryWavePathAssist(layer, player);
+            }
             resetPending();
             buf.autoReleased = false;
-            if (buf.appliedInput != buf.realInput) {
+            if (buf.appliedInput != buf.realInput && !buf.autoHolding && !buf.autoReleased) {
                 sendButton(layer, buf.realInput);
             }
+            sweepGhostLayer();
             return;
         }
         // Left wave / robot while auto-released: the game goes back to what you're really holding.
@@ -4854,6 +4938,7 @@ namespace {
             if (buf.appliedInput != buf.realInput && !buf.autoReleased && !buf.autoClicked) {
                 sendButton(layer, buf.realInput);
             }
+            tryWavePathAssist(layer, player);
             tryWaveAutoHoldRelease(layer, player);
             tryAutoRelease(layer, player);
             tryAutoClick(layer, player);
