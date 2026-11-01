@@ -1,4 +1,4 @@
-// Click Before Frames v2.99.4 (path assist: wave + ship + UFO)
+// Click Before Frames v2.99.5 (path assist: wave + ship + UFO; assist no longer fights your input)
 //
 // When you click (or release, in wave / robot), a hidden "ghost" player is simulated
 // ahead with your input. If the ghost dies, the input is retried with 1..N ticks of
@@ -226,6 +226,7 @@ namespace {
         bool wavePathAssist = true;  // v2.99.3: continuous wave steering toward safer path
         int wavePathWindow = 28;     // v2.99.3: look-ahead for path assist
         int wavePathCooldown = 0;     // v2.99.3: ticks before next assist flip
+        bool pathAssisted = false;    // v2.99.5: the path assist flipped the button; the game holds that state, not realInput
         bool shipPathAssist = true;  // v2.99.4: same idea for ship
         bool ufoPathAssist = true;   // v2.99.4: same idea for UFO
         int flyerPathWindow = 32;    // v2.99.4: look-ahead for ship/UFO assist
@@ -862,6 +863,7 @@ namespace {
         buf.autoClicked = false;
         buf.autoHolding = false;
         buf.wavePathCooldown = 0;
+        buf.pathAssisted = false;
         buf.recordPath = nullptr;
         watched.clear();
         forgetMoveTriggers();
@@ -4032,6 +4034,7 @@ namespace {
         if (!resuming) {
             buf.isPlayer1 = isPlayer1;
             buf.realInput = down;
+            buf.pathAssisted = false;  // v2.99.5: your press/release always wins over the assist
         }
         if (buf.autoReleased && !resuming) {
             // the game already let go for you: your real release has nothing left to do
@@ -4656,20 +4659,32 @@ namespace {
         if (buf.avoidMovers && buf.sawMover) {
             return;
         }
+        char const* mode = wave ? "wave" : ship ? "ship" : "ufo";
+
+        // v2.99.5: the game is holding something other than what you're doing. Hand the
+        // button back as soon as your own state survives the whole look-ahead again; until
+        // then keep the assist's state and don't flip again.
+        if (buf.pathAssisted) {
+            if (holding == buf.realInput) {
+                buf.pathAssisted = false;
+            } else {
+                if (alt >= window) {
+                    buf.pathAssisted = false;
+                    sendButton(layer, buf.realInput);
+                    buf.wavePathCooldown = st(wave ? 4 : 5);
+                    say("PATH assist ({}): back to your {} (lives {}t)", mode, buf.realInput ? "hold" : "release", alt);
+                }
+                return;
+            }
+        }
+
         // Need a clear gain from flipping
         int margin = st(wave ? 4 : 3);
         if (cur < window && alt >= cur + margin) {
             bool next = !holding;
-            buf.appliedInput = next;
-            if (next) {
-                buf.autoHolding = true;
-            } else {
-                buf.autoReleased = true;
-                buf.autoHolding = false;
-            }
+            buf.pathAssisted = true;
             sendButton(layer, next);
             buf.wavePathCooldown = st(wave ? 4 : 5);
-            char const* mode = wave ? "wave" : ship ? "ship" : "ufo";
             say("PATH assist ({}): {} dies in {}t, {} lives {}t → flipped",
                 mode, holding ? "hold" : "release", cur, next ? "hold" : "release", alt);
         }
@@ -4918,7 +4933,7 @@ namespace {
             }
             resetPending();
             buf.autoReleased = false;
-            if (buf.appliedInput != buf.realInput && !buf.autoHolding && !buf.autoReleased) {
+            if (buf.appliedInput != buf.realInput && !buf.autoHolding && !buf.autoReleased && !buf.pathAssisted) {
                 sendButton(layer, buf.realInput);
             }
             sweepGhostLayer();
@@ -4935,7 +4950,7 @@ namespace {
             buf.autoClicked = false;
         }
         if (buf.queue.empty()) {
-            if (buf.appliedInput != buf.realInput && !buf.autoReleased && !buf.autoClicked) {
+            if (buf.appliedInput != buf.realInput && !buf.autoReleased && !buf.autoClicked && !buf.pathAssisted) {
                 sendButton(layer, buf.realInput);
             }
             tryWavePathAssist(layer, player);
@@ -5986,6 +6001,7 @@ class $modify(BufPlayLayer, PlayLayer) {
         buf.autoReleased = false;
         buf.autoClicked = false;
         buf.autoHolding = false;
+        buf.pathAssisted = false;
         buf.rapid = 0;
         forgetPress();
         memoryDeath();
