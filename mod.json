@@ -1,265 +1,236 @@
 {
-  "geode": "5.11.2",
-  "gd": {
-    "win": "2.2081",
-    "android": "2.2081"
-  },
-  "id": "apex.buffer",
-  "name": "ApexBuffer",
-  "version": "v1.1.0",
-  "developer": "Apex",
-  "description": "Predictive input buffer with a polished control panel. Retimes your early clicks — you still press, the mod only shifts timing. Full gameplay settings + optional help sound.",
-  "tags": [
-    "gameplay",
-    "utility"
-  ],
-  "resources": {
-    "files": [
-      "resources/apex-body.fnt",
-      "resources/apex-body.png",
-      "resources/apex-display.fnt",
-      "resources/apex-display.png",
-      "resources/apex-logo.png",
-      "resources/OFL.txt"
-    ]
-  },
-  "settings": {
-    "terminal-title": {
-      "type": "title",
-      "name": "terminal",
-      "description": "terminal window options",
-      "platforms": [
-        "win",
-        "mac"
-      ]
+    "geode": "5.11.2",
+    "gd": {
+        "win": "2.2081",
+        "android": "2.2081",
+        "mac": "2.2081",
+        "ios": "2.2081"
     },
-    "terminal-enabled": {
-      "type": "bool",
-      "name": "enable terminal",
-      "description": "show the terminal button in the ApexBuffer control panel",
-      "default": true,
-      "platforms": [
-        "win",
-        "mac"
-      ]
+    "id": "apex.buffer",
+    "name": "ApexBuffer",
+    "version": "1.1.2",
+    "developer": "Apex",
+    "description": "Predictive input buffer with polished UI. Retimes early clicks. Gameplay settings included.",
+    "tags": [
+        "gameplay",
+        "utility"
+    ],
+    "resources": {
+        "files": [
+            "resources/apex-body.fnt",
+            "resources/apex-body.png",
+            "resources/apex-display.fnt",
+            "resources/apex-display.png",
+            "resources/apex-logo.png",
+            "resources/OFL.txt"
+        ]
     },
-    "keybinds-title": {
-      "type": "title",
-      "name": "keybinds",
-      "description": "change geodes keybinding anytime for ApexBuffer",
-      "platforms": [
-        "win",
-        "mac"
-      ]
-    },
-    "keybind-stage": {
-      "type": "keybind",
-      "name": "cycle stages",
-      "description": "cycle prediction stages",
-      "category": "gameplay",
-      "default": [
-        "F6"
-      ],
-      "platforms": [
-        "win",
-        "mac"
-      ]
-    },
-    "keybind-terminal": {
-      "type": "keybind",
-      "name": "control panel",
-      "description": "open or close the ApexBuffer control panel",
-      "category": "universal",
-      "default": [
-        "F9"
-      ],
-      "platforms": [
-        "win",
-        "mac"
-      ]
-    },
-    "ui-title": {
-      "type": "title",
-      "name": "ui customization",
-      "description": "customize the control panel appearance"
-    },
-    "ui-primary-color": {
-      "type": "color",
-      "name": "primary color",
-      "description": "primary gradient color for the panel",
-      "default": "#A855F7"
-    },
-    "ui-secondary-color": {
-      "type": "color",
-      "name": "secondary color",
-      "description": "secondary gradient color for the panel",
-      "default": "#D5B4FF"
-    },
-    "ui-surface-color": {
-      "type": "color",
-      "name": "surface color",
-      "description": "background color of the panel card",
-      "default": "#17131F"
-    },
-    "ui-text-color": {
-      "type": "color",
-      "name": "text color",
-      "description": "color used for all panel text",
-      "default": "#EFE7F7"
-    },
-    "ui-glow": {
-      "type": "bool",
-      "name": "glow",
-      "description": "draw a soft accent glow behind the panel",
-      "default": true
-    },
-    "ui-panel-scale": {
-      "type": "float",
-      "name": "panel scale",
-      "description": "adjust the overall size of the control panel",
-      "default": 0.7,
-      "min": 0.4,
-      "max": 2.0,
-      "step": 0.05
-    },
-    "ui-font-scale": {
-      "type": "float",
-      "name": "font scale",
-      "description": "adjust the text size in the control panel",
-      "default": 1.5,
-      "min": 0.8,
-      "max": 2.0,
-      "step": 0.05
-    },
-    "mobile-title": {
-      "type": "title",
-      "name": "mobile",
-      "description": "android and ios options",
-      "platforms": [
-        "android",
-        "ios"
-      ]
-    },
-    "mobile-floating-button": {
-      "type": "bool",
-      "name": "floating af button",
-      "description": "also show the draggable af button on screen. the pause menu button is always there",
-      "default": false,
-      "platforms": [
-        "android",
-        "ios"
-      ]
-    },
-    "gameplay-title": {
-      "type": "title",
-      "name": "gameplay",
-      "description": "prediction and assist options"
-    },
-    "help-sound": {
-      "type": "bool",
-      "name": "help sound",
-      "description": "Play a short sound when ApexBuffer saves/retimes an input for you.",
-      "default": true
-    },
-    "practice-only": {
-      "type": "bool",
-      "name": "practice mode only",
-      "description": "Only buffer inputs in practice mode. Off = also in normal runs.",
-      "default": false
-    },
-    "smart-prediction": {
-      "type": "bool",
-      "name": "orb / pad / portal prediction",
-      "description": "Let the ghost use orbs, pads, gravity and speed portals.",
-      "default": true
-    },
-    "sim-budget-ms": {
-      "type": "float",
-      "name": "prediction time budget (ms)",
-      "description": "Max time spent predicting per click. Higher finds longer saves but may hitch.",
-      "default": 8.0,
-      "min": 1.0,
-      "max": 30.0
-    },
-    "ground-horizon": {
-      "type": "int",
-      "name": "cube / ball lookahead (ticks)",
-      "description": "How far ahead cube/ball/spider prediction looks.",
-      "default": 130,
-      "min": 48,
-      "max": 240
-    },
-    "wave-horizon": {
-      "type": "int",
-      "name": "wave lookahead (ticks)",
-      "description": "How far ahead wave prediction looks (mini wave uses a bit less).",
-      "default": 65,
-      "min": 20,
-      "max": 160
-    },
-    "wave-auto-release": {
-      "type": "bool",
-      "name": "wave auto-release",
-      "description": "While you hold in wave, if holding would crash soon and releasing survives, release for you. Practice only unless normal-runs is on.",
-      "default": false
-    },
-    "auto-release-window": {
-      "type": "int",
-      "name": "auto-release window (ticks)",
-      "description": "Hold must die within this many ticks to auto-release.",
-      "default": 6,
-      "min": 2,
-      "max": 24
-    },
-    "auto-release-normal-runs": {
-      "type": "bool",
-      "name": "auto-release in normal runs",
-      "description": "Allow auto-release outside practice mode.",
-      "default": false
-    },
-    "ship-buffer": {
-      "type": "bool",
-      "name": "ship buffer",
-      "description": "Also buffer ship presses and releases.",
-      "default": true
-    },
-    "low-latency": {
-      "type": "bool",
-      "name": "low latency mode",
-      "description": "Shorter searches and smaller delays — less lag feel, fewer long saves.",
-      "default": false
-    },
-    "wave-safety-margin": {
-      "type": "bool",
-      "name": "wave safety margin",
-      "description": "Prefer a wave delay with a little room on both sides, not the razor-edge tick.",
-      "default": true
-    },
-    "show-path": {
-      "type": "bool",
-      "name": "show prediction path",
-      "description": "Draw the ghost path when a save is found (if supported in this build).",
-      "default": false
-    },
-    "explain-inputs": {
-      "type": "bool",
-      "name": "explain inputs (log)",
-      "description": "Log more detail about passes and skips to the panel/terminal log.",
-      "default": false
-    },
-    "avoid-moving-objects": {
-      "type": "bool",
-      "name": "avoid moving objects",
-      "description": "Do not trust a save if the ghost path crosses moving objects.",
-      "default": false
-    },
-    "wave-spam-gap": {
-      "type": "int",
-      "name": "wave spam max gap (ticks)",
-      "description": "Inputs closer than this count toward spam (then may pass through unbuffered).",
-      "default": 16,
-      "min": 4,
-      "max": 40
+    "settings": {
+        "terminal-title": {
+            "type": "title",
+            "name": "terminal",
+            "platforms": [
+                "win",
+                "mac"
+            ]
+        },
+        "terminal-enabled": {
+            "type": "bool",
+            "name": "enable terminal",
+            "default": true,
+            "platforms": [
+                "win",
+                "mac"
+            ]
+        },
+        "keybinds-title": {
+            "type": "title",
+            "name": "keybinds",
+            "platforms": [
+                "win",
+                "mac"
+            ]
+        },
+        "keybind-stage": {
+            "type": "keybind",
+            "name": "cycle stages",
+            "category": "gameplay",
+            "default": [
+                "F6"
+            ],
+            "platforms": [
+                "win",
+                "mac"
+            ]
+        },
+        "keybind-terminal": {
+            "type": "keybind",
+            "name": "control panel",
+            "category": "universal",
+            "default": [
+                "F9"
+            ],
+            "platforms": [
+                "win",
+                "mac"
+            ]
+        },
+        "ui-title": {
+            "type": "title",
+            "name": "ui customization"
+        },
+        "ui-primary-color": {
+            "type": "color",
+            "name": "primary color",
+            "default": "#A855F7"
+        },
+        "ui-secondary-color": {
+            "type": "color",
+            "name": "secondary color",
+            "default": "#D5B4FF"
+        },
+        "ui-surface-color": {
+            "type": "color",
+            "name": "surface color",
+            "default": "#17131F"
+        },
+        "ui-text-color": {
+            "type": "color",
+            "name": "text color",
+            "default": "#EFE7F7"
+        },
+        "ui-glow": {
+            "type": "bool",
+            "name": "glow",
+            "default": true
+        },
+        "ui-panel-scale": {
+            "type": "float",
+            "name": "panel scale",
+            "default": 0.7,
+            "min": 0.4,
+            "max": 2.0,
+            "step": 0.05
+        },
+        "ui-font-scale": {
+            "type": "float",
+            "name": "font scale",
+            "default": 1.5,
+            "min": 0.8,
+            "max": 2.0,
+            "step": 0.05
+        },
+        "mobile-title": {
+            "type": "title",
+            "name": "mobile",
+            "platforms": [
+                "android",
+                "ios"
+            ]
+        },
+        "mobile-floating-button": {
+            "type": "bool",
+            "name": "floating af button",
+            "default": false,
+            "platforms": [
+                "android",
+                "ios"
+            ]
+        },
+        "gameplay-title": {
+            "type": "title",
+            "name": "gameplay (basu / assist)"
+        },
+        "help-sound": {
+            "type": "bool",
+            "name": "help sound",
+            "description": "Sound when the mod retimes an input",
+            "default": true
+        },
+        "practice-only": {
+            "type": "bool",
+            "name": "practice mode only",
+            "default": false
+        },
+        "smart-prediction": {
+            "type": "bool",
+            "name": "orb / pad / portal prediction",
+            "default": true
+        },
+        "sim-budget-ms": {
+            "type": "float",
+            "name": "prediction budget (ms)",
+            "default": 8.0,
+            "min": 1.0,
+            "max": 30.0
+        },
+        "ground-horizon": {
+            "type": "int",
+            "name": "cube / ball lookahead (ticks)",
+            "default": 130,
+            "min": 48,
+            "max": 240
+        },
+        "wave-horizon": {
+            "type": "int",
+            "name": "wave lookahead (ticks)",
+            "default": 65,
+            "min": 20,
+            "max": 160
+        },
+        "wave-auto-release": {
+            "type": "bool",
+            "name": "wave auto-release",
+            "default": false
+        },
+        "auto-release-window": {
+            "type": "int",
+            "name": "auto-release window (ticks)",
+            "default": 6,
+            "min": 2,
+            "max": 24
+        },
+        "auto-release-normal-runs": {
+            "type": "bool",
+            "name": "auto-release in normal runs",
+            "default": false
+        },
+        "ship-buffer": {
+            "type": "bool",
+            "name": "ship buffer",
+            "default": true
+        },
+        "low-latency": {
+            "type": "bool",
+            "name": "low latency mode",
+            "default": false
+        },
+        "wave-safety-margin": {
+            "type": "bool",
+            "name": "wave safety margin",
+            "default": true
+        },
+        "show-path": {
+            "type": "bool",
+            "name": "show prediction path",
+            "default": false
+        },
+        "explain-inputs": {
+            "type": "bool",
+            "name": "explain inputs in log",
+            "default": false
+        },
+        "avoid-moving-objects": {
+            "type": "bool",
+            "name": "avoid moving objects",
+            "default": false
+        },
+        "wave-spam-gap": {
+            "type": "int",
+            "name": "wave spam gap (ticks)",
+            "default": 16,
+            "min": 4,
+            "max": 40
+        }
     }
-  }
 }
