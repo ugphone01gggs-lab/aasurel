@@ -8,7 +8,7 @@
     },
     "id": "apex.buffer",
     "name": "ApexBuffer",
-    "version": "1.3.2",
+    "version": "1.4.0",
     "developer": "Apex",
     "description": "Predictive input buffer. Retimes early clicks, blocks clearly fatal presses/releases when delay cannot save them, share codes, F9 chips.",
     "tags": [

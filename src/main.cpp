@@ -2409,15 +2409,15 @@ finally {
     constexpr int THEMES_PER_ROW = 8;
     constexpr int THEME_ROW_COUNT = (THEME_COUNT + THEMES_PER_ROW - 1) / THEMES_PER_ROW;
     constexpr float SWATCH_WIDTH = 76.f;
-    constexpr float SWATCH_HEIGHT = 38.f;
+    constexpr float SWATCH_HEIGHT = 30.f;
     constexpr float SWATCH_GAP = 6.f;
-    constexpr float SWATCH_ROW_GAP = 8.f;
+    constexpr float SWATCH_ROW_GAP = 4.f;
     constexpr float SWATCH_X = CONTENT_X + 20.f;
-    constexpr float SWATCH_Y = 272.f;
+    constexpr float SWATCH_Y = 305.f;
 
     constexpr float CREDITS_CARD_WIDTH = 452.f;
     constexpr float CREDITS_CARD_HEIGHT = 318.f;
-    constexpr float SETTINGS_ROW_Y[2] = { 190.f, 142.f };
+    constexpr float SETTINGS_ROW_Y[2] = { 158.f, 128.f };
     constexpr int SETTINGS_CELL_COUNT = 3;
     constexpr float SETTINGS_CELL_GAP = 10.f;
     constexpr float SETTINGS_CELL_WIDTH = (CONTENT_WIDTH - 32.f - SETTINGS_CELL_GAP) * 0.5f;
@@ -2429,12 +2429,21 @@ finally {
         CONTENT_X + (CONTENT_WIDTH - MODE_ICON_STEP * static_cast<float>(MODE_ICON_COUNT)) * 0.5f;
     constexpr float MODE_ICON_Y = 240.f;
 
-    constexpr float CONFIG_BUTTON_Y = 98.f;
+    constexpr float CONFIG_BUTTON_Y = 68.f;
     constexpr float CONFIG_BUTTON_WIDTH = 120.f;
     constexpr float CONFIG_BUTTON_HEIGHT = 34.f;
     constexpr float CONFIG_BUTTON_X = CONTENT_X + 16.f;
     constexpr float CONFIG_BUTTON_GAP = 10.f;
     constexpr float CONFIG_EXPORT_X = CONFIG_BUTTON_X + CONFIG_BUTTON_WIDTH + CONFIG_BUTTON_GAP;
+    constexpr float CONFIG_INPUT_Y = 102.f;
+    constexpr float CONFIG_INPUT_WIDTH = CONTENT_WIDTH - 40.f;
+    // F9 Assist section (gameplay toggles, themed like Afterflow pills)
+    constexpr int ASSIST_COUNT = 6;
+    constexpr float ASSIST_CELL_W = (CONTENT_WIDTH - 32.f - 8.f) * 0.5f;
+    constexpr float ASSIST_CELL_H = 26.f;
+    constexpr float ASSIST_GAP_X = 8.f;
+    constexpr float ASSIST_GAP_Y = 4.f;
+    constexpr float ASSIST_ORIGIN_Y = 255.f;
 
     constexpr int CHIP_COUNT = 6;
     constexpr float CHIP_WIDTH = 96.f;
@@ -2784,6 +2793,92 @@ finally {
 
     CCRect chipRect(int index) {
         return CCRect(CHIP_X + static_cast<float>(index) * (CHIP_WIDTH + CHIP_GAP), CHIP_Y, CHIP_WIDTH, CHIP_HEIGHT);
+    }
+
+    CCRect assistRect(int index) {
+        int const col = index % 2;
+        int const row = index / 2;
+        return CCRect(
+            CONTENT_X + 16.f + static_cast<float>(col) * (ASSIST_CELL_W + ASSIST_GAP_X),
+            ASSIST_ORIGIN_Y - static_cast<float>(row) * (ASSIST_CELL_H + ASSIST_GAP_Y) - ASSIST_CELL_H,
+            ASSIST_CELL_W,
+            ASSIST_CELL_H
+        );
+    }
+
+    char const* assistName(int index) {
+        static char const* names[ASSIST_COUNT] = {
+            "help sound", "block unsafe", "practice only", "smart predict",
+            "wave auto-rel", "auto-rel normal", "ship buffer", "low latency",
+            "wave margin", "show path"
+        };
+        if (index < 0 || index >= ASSIST_COUNT) return "";
+        return names[index];
+    }
+
+    bool assistValue(int index) {
+        switch (index) {
+            case 0: return state.helpSoundEnabled;
+            case 1: return state.blockUnsafeInputs;
+            case 2: return state.practiceModeOnly;
+            case 3: return state.smartEnabled;
+            case 4: return state.autoReleaseEnabled;
+            case 5: return state.autoNormalRunsEnabled;
+            case 6: return state.shipBufferEnabled;
+            case 7: return state.lowLatencyMode;
+            case 8: return state.waveMarginEnabled;
+            case 9: return state.showPathEnabled;
+            default: return false;
+        }
+    }
+
+    void assistToggle(int index) {
+        auto* mod = Mod::get();
+        switch (index) {
+            case 0:
+                state.helpSoundEnabled = !state.helpSoundEnabled;
+                mod->setSettingValue<bool>("help-sound", state.helpSoundEnabled);
+                break;
+            case 1:
+                state.blockUnsafeInputs = !state.blockUnsafeInputs;
+                mod->setSettingValue<bool>("block-unsafe-inputs", state.blockUnsafeInputs);
+                break;
+            case 2:
+                state.practiceModeOnly = !state.practiceModeOnly;
+                mod->setSettingValue<bool>("practice-only", state.practiceModeOnly);
+                break;
+            case 3:
+                state.smartEnabled = !state.smartEnabled;
+                mod->setSettingValue<bool>("smart-prediction", state.smartEnabled);
+                break;
+            case 4:
+                state.autoReleaseEnabled = !state.autoReleaseEnabled;
+                mod->setSettingValue<bool>("wave-auto-release", state.autoReleaseEnabled);
+                break;
+            case 5:
+                state.autoNormalRunsEnabled = !state.autoNormalRunsEnabled;
+                mod->setSettingValue<bool>("auto-release-normal-runs", state.autoNormalRunsEnabled);
+                break;
+            case 6:
+                state.shipBufferEnabled = !state.shipBufferEnabled;
+                mod->setSettingValue<bool>("ship-buffer", state.shipBufferEnabled);
+                break;
+            case 7:
+                state.lowLatencyMode = !state.lowLatencyMode;
+                mod->setSettingValue<bool>("low-latency", state.lowLatencyMode);
+                break;
+            case 8:
+                state.waveMarginEnabled = !state.waveMarginEnabled;
+                mod->setSettingValue<bool>("wave-safety-margin", state.waveMarginEnabled);
+                break;
+            case 9:
+                state.showPathEnabled = !state.showPathEnabled;
+                mod->setSettingValue<bool>("show-path", state.showPathEnabled);
+                break;
+            default:
+                break;
+        }
+        say("assist: {} {}", assistName(index), assistValue(index) ? "on" : "off");
     }
 
     char const* chipName(int index) {
@@ -3317,6 +3412,7 @@ finally {
         void buildDeck();
         void applyTab();
         void applyChip();
+        void applyAssist();
         void applyTheme(int index);
         void buildCreditsLayer();
         void closeCreditsLayer();
@@ -3448,6 +3544,7 @@ finally {
         std::vector<int> m_modeSlots;
         bool m_modeSlotsLoaded = false;
         CCLabelBMFont* m_configStatusLabel = nullptr;
+        TextInput* m_configInput = nullptr;
         CCNode* m_importButton = nullptr;
         CCNode* m_exportButton = nullptr;
         CCNode* m_tutorialButton = nullptr;
@@ -3473,6 +3570,9 @@ finally {
         int m_activeTab = 0;
         CCDrawNode* m_chipBar = nullptr;
         CCLabelBMFont* m_chipLabels[CHIP_COUNT] = {};
+        CCDrawNode* m_assistBar = nullptr;
+        CCLabelBMFont* m_assistLabels[ASSIST_COUNT] = {};
+        CCLabelBMFont* m_assistHeaderLabel = nullptr;
         CCNode* m_stageBackButton = nullptr;
         CCNode* m_stageForwardButton = nullptr;
         CCNode* m_copyButton = nullptr;
@@ -3572,6 +3672,8 @@ finally {
         m_modesWaveLabel = nullptr;
         m_modesStageLabel = nullptr;
         m_chipBar = nullptr;
+        m_assistBar = nullptr;
+        m_assistHeaderLabel = nullptr;
         m_stageBackButton = nullptr;
         m_stageForwardButton = nullptr;
         m_copyButton = nullptr;
@@ -3584,6 +3686,7 @@ finally {
         m_glow = nullptr;
         m_modeIconContainer = nullptr;
         m_configStatusLabel = nullptr;
+        m_configInput = nullptr;
         m_importButton = nullptr;
         m_exportButton = nullptr;
         m_tutorialButton = nullptr;
@@ -3618,6 +3721,7 @@ finally {
         m_customRemoveLabel = nullptr;
         for (int index = 0; index < TAB_COUNT; ++index) { m_tabLabels[index] = nullptr; }
         for (int index = 0; index < CHIP_COUNT; ++index) { m_chipLabels[index] = nullptr; }
+        for (int index = 0; index < ASSIST_COUNT; ++index) { m_assistLabels[index] = nullptr; }
         for (int index = 0; index < 4; ++index) {
             m_stageTimingLabels[index] = nullptr;
             m_modesNameLabels[index] = nullptr;
@@ -3834,7 +3938,7 @@ finally {
             m_customRemoveLabel = removeLabel;
         }
 
-        m_settingsHeaderLabel = makeLabel("appearance", true, 0.62f, logTextColor());
+        m_settingsHeaderLabel = makeLabel("look + assist", true, 0.62f, logTextColor());
         m_settingsHeaderLabel->setAnchorPoint(CCPoint(0.f, 0.5f));
         m_settingsHeaderLabel->setPosition(CCPoint(LOG_X + 22.f, SETTINGS_HEADER_Y));
         m_deck->addChild(m_settingsHeaderLabel, 3);
@@ -3900,6 +4004,27 @@ finally {
             }
         }
 
+        m_assistHeaderLabel = makeLabel("Assist", true, 0.58f, accentColor());
+        if (m_assistHeaderLabel) {
+            m_assistHeaderLabel->setAnchorPoint(CCPoint(0.f, 0.5f));
+            m_assistHeaderLabel->setPosition(CCPoint(CONTENT_X + 18.f, ASSIST_ORIGIN_Y + 6.f));
+            m_deck->addChild(m_assistHeaderLabel, 3);
+        }
+        m_assistBar = makeDrawNode();
+        if (m_assistBar) {
+            m_deck->addChild(m_assistBar, 2);
+        }
+        for (int index = 0; index < ASSIST_COUNT; ++index) {
+            auto rect = assistRect(index);
+            if (auto* label = makeLabel(assistName(index), false, 0.48f, softTextColor())) {
+                label->setAnchorPoint(CCPoint(0.f, 0.5f));
+                label->setPosition(CCPoint(rect.getMinX() + 22.f, rect.getMidY()));
+                fitLabelToWidth(label, rect.size.width - 28.f);
+                m_deck->addChild(label, 3);
+                m_assistLabels[index] = label;
+            }
+        }
+
         char const* settingsNames[SETTINGS_CELL_COUNT] = { "glow", "panel", "font" };
         for (int cell = 0; cell < SETTINGS_CELL_COUNT; ++cell) {
             auto rect = settingsCellRect(cell);
@@ -3919,6 +4044,14 @@ finally {
                     m_settingsStepLabels[(cell - 1) * 2 + which] = glyph;
                 }
             }
+        }
+
+        if (auto* configInput = TextInput::create(CONFIG_INPUT_WIDTH, "type or paste ApexBuffer code")) {
+            configInput->setMaxCharCount(160);
+            configInput->setPosition(CCPoint(CONTENT_X + 20.f + CONFIG_INPUT_WIDTH * 0.5f, CONFIG_INPUT_Y));
+            configInput->setVisible(false);
+            m_deck->addChild(configInput, 5);
+            m_configInput = configInput;
         }
 
         m_importButton = makeDeckButton(m_deck, configButtonRect(0), "import", false, false, 0.58f);
@@ -4360,7 +4493,33 @@ finally {
         }
     }
 
-    void ApexOverlay::applyTab() {
+
+    void ApexOverlay::applyAssist() {
+        if (!m_assistBar) {
+            return;
+        }
+        m_assistBar->clear();
+        for (int index = 0; index < ASSIST_COUNT; ++index) {
+            auto cell = assistRect(index);
+            bool isOn = assistValue(index);
+            float radius = 5.f;
+            float dotX = cell.getMinX() + 12.f;
+            float dotY = cell.getMidY();
+            if (isOn) {
+                drawCurvedRect(m_assistBar, cell, radius, color4(accentColor(), 34), color4(accentColor(), 120), 1.f);
+                m_assistBar->drawCircle(CCPoint(dotX, dotY), 4.f, color4(accentColor(), 255), 0.f, color4(0, 0, 0, 0), 18);
+            } else {
+                drawCurvedRect(m_assistBar, cell, radius, panelTint(8), panelTint(26), 1.f);
+                m_assistBar->drawCircle(CCPoint(dotX, dotY), 3.f, panelTint(70), 0.f, color4(0, 0, 0, 0), 18);
+            }
+            if (m_assistLabels[index]) {
+                m_assistLabels[index]->setColor(isOn ? logTextColor() : softTextColor());
+                m_assistLabels[index]->setOpacity(isOn ? 255 : 190);
+            }
+        }
+    }
+
+void ApexOverlay::applyTab() {
         if (m_activeTab < 0) { m_activeTab = 0; }
         if (m_activeTab >= TAB_COUNT) { m_activeTab = TAB_COUNT - 1; }
 
@@ -4428,6 +4587,12 @@ finally {
         if (m_themeSwatches) { m_themeSwatches->setVisible(showSettings); }
         if (m_settingsHintLabel) { m_settingsHintLabel->setVisible(showSettings); }
         if (m_modeIconContainer) { m_modeIconContainer->setVisible(showSettings); }
+        if (m_configInput) { m_configInput->setVisible(showSettings); }
+        if (m_assistHeaderLabel) { m_assistHeaderLabel->setVisible(showSettings); }
+        if (m_assistBar) { m_assistBar->setVisible(showSettings); }
+        for (int i = 0; i < ASSIST_COUNT; ++i) {
+            if (m_assistLabels[i]) { m_assistLabels[i]->setVisible(showSettings); }
+        }
         if (m_importButton) { m_importButton->setVisible(showSettings); }
         if (m_exportButton) { m_exportButton->setVisible(showSettings); }
         if (m_tutorialButton) { m_tutorialButton->setVisible(showSettings); }
@@ -4452,6 +4617,7 @@ finally {
         }
 
         applyChip();
+        applyAssist();
 
         ccColor3B live = state.isEnabled ? accentColor() : warningColor();
 
@@ -5861,6 +6027,12 @@ finally {
             return HitTarget::Credits;
         }
         if (m_activeTab == 2) {
+            for (int index = 0; index < ASSIST_COUNT; ++index) {
+                if (assistRect(index).containsPoint(point)) {
+                    if (stageSlot) { *stageSlot = index; }
+                    return HitTarget::AssistToggle;
+                }
+            }
             for (int index = 0; index < THEME_COUNT; ++index) {
                 if (swatchRect(index).containsPoint(point)) {
                     if (stageSlot) { *stageSlot = index; }
@@ -6058,6 +6230,14 @@ finally {
             return;
         }
 
+        if (target == HitTarget::AssistToggle) {
+            if (m_pressedStageSlot >= 0 && m_pressedStageSlot < ASSIST_COUNT) {
+                assistToggle(m_pressedStageSlot);
+                refresh();
+            }
+            return;
+        }
+
         if (target == HitTarget::Chip) {
             int index = m_pressedStageSlot;
             auto* mod = Mod::get();
@@ -6227,15 +6407,35 @@ finally {
         size_t mid = std::max<size_t>(8, (b64.size() + 1) / 2);
         while (mid < b64.size() && (mid % 4) != 0) ++mid;
         std::string code = fmt::format("ApexBuffer\n{}\n{}", b64.substr(0, mid), b64.substr(mid));
-        bool ok = geode::utils::clipboard::write(code);
-        setConfigStatus(ok ? "code copied (ApexBuffer + 2 lines)" : "export failed", ok);
-        say("share code exported");
+        // Prefer showing code in the on-panel field; clipboard is optional helper
+        std::string singleLine = code;
+        for (char& ch : singleLine) {
+            if (ch == '\n' || ch == '\r') ch = ' ';
+        }
+        if (m_configInput) {
+            m_configInput->setString(singleLine);
+        }
+        bool clipOk = geode::utils::clipboard::write(code);
+        setConfigStatus(clipOk ? "code in box (+ clipboard if available)" : "code filled in box", true);
+        say("share code ready in settings box");
     }
 
     void ApexOverlay::importConfig() {
-        std::string text = geode::utils::clipboard::read();
+        std::string text;
+        if (m_configInput) {
+            text = m_configInput->getString();
+        }
+        // Trim spaces
+        while (!text.empty() && (text.back() == ' ' || text.back() == '\n' || text.back() == '\r')) text.pop_back();
+        size_t start = 0;
+        while (start < text.size() && (text[start] == ' ' || text[start] == '\n' || text[start] == '\r')) ++start;
+        if (start > 0) text.erase(0, start);
+
         if (text.empty()) {
-            setConfigStatus("clipboard empty — copy an ApexBuffer code first", false);
+            text = geode::utils::clipboard::read();
+        }
+        if (text.empty()) {
+            setConfigStatus("type a code in the box, or copy one first", false);
             return;
         }
 
