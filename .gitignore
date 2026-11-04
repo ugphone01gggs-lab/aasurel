@@ -1,22 +1,6 @@
-# Build output
+# CMake / Geode build trees
 build/
-build-*/
-out/
-*.geode
+build-clang/
 
-# CMake
-CMakeCache.txt
-CMakeFiles/
-cmake-build-*/
-
-# Editors / IDEs
-.vs/
-.vscode/
-.idea/
-.cache/
-compile_commands.json
-
-# OS
-Thumbs.db
-.DS_Store
-desktop.ini
+# Local build logs
+build_clang_*.log
