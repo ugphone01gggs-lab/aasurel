@@ -8,9 +8,9 @@
     },
     "id": "apex.buffer",
     "name": "ApexBuffer",
-    "version": "1.3.0",
+    "version": "1.3.2",
     "developer": "Apex",
-    "description": "Predictive input buffer. Safer stages, F9 chips, stronger wave/ship spam retiming and hold auto-release rescue (does not fully pilot for you).",
+    "description": "Predictive input buffer. Retimes early clicks, blocks clearly fatal presses/releases when delay cannot save them, share codes, F9 chips.",
     "tags": [
         "gameplay",
         "utility"
@@ -145,6 +145,12 @@
             "type": "bool",
             "name": "help sound",
             "description": "Sound when the mod retimes an input",
+            "default": true
+        },
+        "block-unsafe-inputs": {
+            "type": "bool",
+            "name": "block unsafe presses",
+            "description": "If a press/release would die soon and delay cannot fix it, cancel that input instead of sending a death click.",
             "default": true
         },
         "practice-only": {

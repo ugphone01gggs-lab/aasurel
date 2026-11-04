@@ -351,6 +351,7 @@ namespace {
         bool lowLatencyMode = false;
         bool explainEnabled = false;
         bool helpSoundEnabled = true;
+        bool blockUnsafeInputs = true;
         bool deathLogEnabled = false;
         bool captureKillerObject = false;
         bool hasBaseTouchedDown = false;
@@ -2253,6 +2254,7 @@ finally {
         state.deathLogEnabled = false;
         state.explainEnabled = mod->getSettingValue<bool>("explain-inputs");
         state.helpSoundEnabled = mod->getSettingValue<bool>("help-sound");
+        state.blockUnsafeInputs = mod->getSettingValue<bool>("block-unsafe-inputs");
         state.lowLatencyMode = mod->getSettingValue<bool>("low-latency");
         state.predictMovingObjects = false;
         state.shipMaxDelayTicks = 12;
@@ -3167,7 +3169,7 @@ finally {
             "pick a theme to change the panel colors.",
             "glow turns the soft glow behind the panel on or off.",
             "credits (top right) shows who helped make this.",
-            "export copies your tuning as json, import loads it back.",
+            "export copies an ApexBuffer share code, import pastes one from clipboard.",
         }, TF_TAB2, true, TF_SWATCHES, TF_CONFIG });
         steps.push_back({ "you're all set", -1, {
             "that's everything.",
@@ -6182,79 +6184,153 @@ finally {
     }
 
     void ApexOverlay::exportConfig() {
-        std::string text = fmt::format(
-            "{{\"groundHorizonTicks\":{},\"waveHorizonTicks\":{},\"spamGapTicks\":{},"
-            "\"autoReleaseWindowTicks\":{},\"orbWindowTicks\":{},\"shipMaxDelayTicks\":{},"
-            "\"shipSpamGapTicks\":{},\"robotHoldTicks\":{}}}",
-            state.groundHorizonTicks,
-            state.waveHorizonTicks,
-            state.spamGapTicks,
-            state.autoReleaseWindowTicks,
-            state.orbWindowTicks,
-            state.shipMaxDelayTicks,
-            state.shipSpamGapTicks,
-            robotHoldHistory.pick(20, 50)
-        );
-        bool ok = geode::utils::clipboard::write(text.c_str());
-        setConfigStatus(ok ? "exported to clipboard" : "export failed", ok);
+        // Share code format (clipboard), ~2 lines:
+        //   ApexBuffer
+        //   <base64...>
+        //   <base64...>
+        auto b64Encode = [](std::string const& raw) {
+            static char const* table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            std::string out;
+            size_t i = 0;
+            while (i < raw.size()) {
+                uint32_t n = static_cast<uint8_t>(raw[i++]) << 16;
+                bool two = false, three = false;
+                if (i < raw.size()) { n |= static_cast<uint8_t>(raw[i++]) << 8; two = true; }
+                if (i < raw.size()) { n |= static_cast<uint8_t>(raw[i++]); three = true; }
+                out.push_back(table[(n >> 18) & 63]);
+                out.push_back(table[(n >> 12) & 63]);
+                out.push_back(two ? table[(n >> 6) & 63] : '=');
+                out.push_back(three ? table[n & 63] : '=');
+            }
+            return out;
+        };
+
+        std::string raw;
+        raw.push_back(static_cast<char>(1));
+        raw.push_back(static_cast<char>(std::clamp(state.stageIndex, 0, 31)));
+        uint8_t flags = 0;
+        if (state.helpSoundEnabled) flags |= 1;
+        if (state.practiceModeOnly) flags |= 2;
+        if (state.shipBufferEnabled) flags |= 4;
+        if (state.autoReleaseEnabled) flags |= 8;
+        if (state.waveMarginEnabled) flags |= 16;
+        if (state.showPathEnabled) flags |= 32;
+        if (state.lowLatencyMode) flags |= 64;
+        raw.push_back(static_cast<char>(flags));
+        raw.push_back(static_cast<char>(std::clamp(state.spamGapTicks, 0, 255)));
+        raw.push_back(static_cast<char>(std::clamp(state.autoReleaseWindowTicks, 0, 255)));
+        raw.push_back(static_cast<char>(std::clamp(state.groundHorizonTicks / 2, 0, 255)));
+        raw.push_back(static_cast<char>(std::clamp(state.waveHorizonTicks / 2, 0, 255)));
+        raw.push_back(static_cast<char>(std::clamp(state.shipMaxDelayTicks, 0, 255)));
+        raw.push_back(static_cast<char>(std::clamp(state.shipSpamGapTicks, 0, 255)));
+        std::string b64 = b64Encode(raw);
+        size_t mid = std::max<size_t>(8, (b64.size() + 1) / 2);
+        while (mid < b64.size() && (mid % 4) != 0) ++mid;
+        std::string code = fmt::format("ApexBuffer\n{}\n{}", b64.substr(0, mid), b64.substr(mid));
+        bool ok = geode::utils::clipboard::write(code);
+        setConfigStatus(ok ? "code copied (ApexBuffer + 2 lines)" : "export failed", ok);
+        say("share code exported");
     }
 
     void ApexOverlay::importConfig() {
         std::string text = geode::utils::clipboard::read();
         if (text.empty()) {
-            setConfigStatus("clipboard is empty", false);
-            return;
-        }
-        if (text.find('{') == std::string::npos) {
-            setConfigStatus("clipboard is not a config", false);
+            setConfigStatus("clipboard empty — copy an ApexBuffer code first", false);
             return;
         }
 
+        auto b64Decode = [](std::string in, std::string& out) -> bool {
+            auto val = [](char ch) -> int {
+                if (ch >= 'A' && ch <= 'Z') return ch - 'A';
+                if (ch >= 'a' && ch <= 'z') return ch - 'a' + 26;
+                if (ch >= '0' && ch <= '9') return ch - '0' + 52;
+                if (ch == '+') return 62;
+                if (ch == '/') return 63;
+                return -1;
+            };
+            std::string clean;
+            for (char ch : in) {
+                if (ch == '\n' || ch == '\r' || ch == ' ' || ch == '-') continue;
+                clean.push_back(ch);
+            }
+            if (clean.size() < 4 || clean.size() % 4 != 0) return false;
+            out.clear();
+            for (size_t i = 0; i < clean.size(); i += 4) {
+                int a = val(clean[i]), b = val(clean[i + 1]);
+                int c1 = clean[i + 2] == '=' ? 0 : val(clean[i + 2]);
+                int d = clean[i + 3] == '=' ? 0 : val(clean[i + 3]);
+                if (a < 0 || b < 0) return false;
+                uint32_t n = (uint32_t(a) << 18) | (uint32_t(b) << 12) | (uint32_t(std::max(c1, 0)) << 6) | uint32_t(std::max(d, 0));
+                out.push_back(char((n >> 16) & 255));
+                if (clean[i + 2] != '=') out.push_back(char((n >> 8) & 255));
+                if (clean[i + 3] != '=') out.push_back(char(n & 255));
+            }
+            return true;
+        };
+
+        // Share code path
+        if (text.find("ApexBuffer") != std::string::npos || text.find('{') == std::string::npos) {
+            std::string payload = text;
+            auto pos = payload.find("ApexBuffer");
+            if (pos != std::string::npos) {
+                payload.erase(0, pos + std::string("ApexBuffer").size());
+            }
+            std::string raw;
+            if (!b64Decode(payload, raw) || raw.size() < 9 || static_cast<uint8_t>(raw[0]) != 1) {
+                setConfigStatus("invalid ApexBuffer code", false);
+                return;
+            }
+            state.stageIndex = std::clamp(int(uint8_t(raw[1])), 0, stageTotalCount() - 1);
+            uint8_t flags = uint8_t(raw[2]);
+            state.helpSoundEnabled = flags & 1;
+            state.practiceModeOnly = flags & 2;
+            state.shipBufferEnabled = flags & 4;
+            state.autoReleaseEnabled = flags & 8;
+            state.waveMarginEnabled = flags & 16;
+            state.showPathEnabled = flags & 32;
+            state.lowLatencyMode = flags & 64;
+            state.spamGapTicks = std::clamp(int(uint8_t(raw[3])), 4, 40);
+            state.autoReleaseWindowTicks = std::clamp(int(uint8_t(raw[4])), 1, 32);
+            state.groundHorizonTicks = std::clamp(int(uint8_t(raw[5])) * 2, 48, 240);
+            state.waveHorizonTicks = std::clamp(int(uint8_t(raw[6])) * 2, 20, 160);
+            state.shipMaxDelayTicks = std::clamp(int(uint8_t(raw[7])), 0, 24);
+            state.shipSpamGapTicks = std::clamp(int(uint8_t(raw[8])), 2, 40);
+            Mod::get()->setSavedValue("stage", state.stageIndex);
+            Mod::get()->setSettingValue<bool>("help-sound", state.helpSoundEnabled);
+            Mod::get()->setSettingValue<bool>("practice-only", state.practiceModeOnly);
+            Mod::get()->setSettingValue<bool>("ship-buffer", state.shipBufferEnabled);
+            Mod::get()->setSettingValue<bool>("wave-auto-release", state.autoReleaseEnabled);
+            Mod::get()->setSettingValue<bool>("wave-safety-margin", state.waveMarginEnabled);
+            Mod::get()->setSettingValue<bool>("show-path", state.showPathEnabled);
+            Mod::get()->setSettingValue<bool>("low-latency", state.lowLatencyMode);
+            applyStage();
+            setConfigStatus("ApexBuffer code imported", true);
+            rebuildDeck();
+            refresh();
+            say("share code imported");
+            return;
+        }
+
+        // Legacy JSON still supported
         int value = 0;
         int applied = 0;
-        if (jsonInt(text, "groundHorizonTicks", value)) {
-            state.groundHorizonTicks = std::clamp(value, 48, 240);
-            ++applied;
-        }
-        if (jsonInt(text, "waveHorizonTicks", value)) {
-            state.waveHorizonTicks = std::clamp(value, 20, 160);
-            ++applied;
-        }
-        if (jsonInt(text, "spamGapTicks", value)) {
-            state.spamGapTicks = std::clamp(value, 4, 40);
-            ++applied;
-        }
-        if (jsonInt(text, "autoReleaseWindowTicks", value)) {
-            state.autoReleaseWindowTicks = std::clamp(value, 1, 32);
-            ++applied;
-        }
-        if (jsonInt(text, "orbWindowTicks", value)) {
-            state.orbWindowTicks = std::clamp(value, 1, 64);
-            ++applied;
-        }
-        if (jsonInt(text, "shipMaxDelayTicks", value)) {
-            state.shipMaxDelayTicks = std::clamp(value, 0, 16);
-            ++applied;
-        }
-        if (jsonInt(text, "shipSpamGapTicks", value)) {
-            state.shipSpamGapTicks = std::clamp(value, 2, 40);
-            ++applied;
-        }
-        if (jsonInt(text, "robotHoldTicks", value)) {
-            robotHoldHistory.add(std::clamp(value, 1, 200));
-            ++applied;
-        }
-
+        if (jsonInt(text, "groundHorizonTicks", value)) { state.groundHorizonTicks = std::clamp(value, 48, 240); ++applied; }
+        if (jsonInt(text, "waveHorizonTicks", value)) { state.waveHorizonTicks = std::clamp(value, 20, 160); ++applied; }
+        if (jsonInt(text, "spamGapTicks", value)) { state.spamGapTicks = std::clamp(value, 4, 40); ++applied; }
+        if (jsonInt(text, "autoReleaseWindowTicks", value)) { state.autoReleaseWindowTicks = std::clamp(value, 1, 32); ++applied; }
+        if (jsonInt(text, "orbWindowTicks", value)) { state.orbWindowTicks = std::clamp(value, 1, 64); ++applied; }
+        if (jsonInt(text, "shipMaxDelayTicks", value)) { state.shipMaxDelayTicks = std::clamp(value, 0, 16); ++applied; }
+        if (jsonInt(text, "shipSpamGapTicks", value)) { state.shipSpamGapTicks = std::clamp(value, 2, 40); ++applied; }
+        if (jsonInt(text, "robotHoldTicks", value)) { robotHoldHistory.add(std::clamp(value, 1, 200)); ++applied; }
         if (applied == 0) {
             setConfigStatus("no known keys found", false);
             return;
         }
-
-        setConfigStatus(fmt::format("imported {} values", applied), true);
+        setConfigStatus(fmt::format("imported {} values (legacy)", applied), true);
         refresh();
     }
 
-    std::vector<int>& ApexOverlay::modeSlots() {
+std::vector<int>& ApexOverlay::modeSlots() {
     if (!m_modeSlotsLoaded) {
         m_modeSlotsLoaded = true;
         m_modeSlots.clear();
@@ -7541,6 +7617,12 @@ finally {
     }
 
     void queueInput(int tickCount, bool isDown) {
+        // Hard cap so a save never sits so long it feels like a late forced click
+        tickCount = std::clamp(tickCount, 0, st(20));
+        // Drop older queue if it is growing (prevents stacked late presses)
+        while (state.queuedInputs.size() >= 3) {
+            state.queuedInputs.pop_front();
+        }
         state.queuedInputs.push_back({ tickCount, isDown });
     }
 
@@ -7646,6 +7728,15 @@ finally {
 
         auto* player1 = baseGameLayer->m_player1;
         auto* player2 = isDual ? playLayer->m_player2 : nullptr;
+        if (!player1 || player1->m_isDead) {
+            resetPending();
+            state.hasAppliedInput = false;
+            state.hasRealInput = false;
+            state.inputShiftTicks = 0;
+            state.releaseShiftTicks = 0;
+            // Swallow so the press is not stored for the next attempt
+            return true;
+        }
 
         float midTickFraction = 0.f;
         if (state.clickBetweenFramesSync && state.isInRealUpdate && player1 && std::abs(state.tickDeltaX) > 0.01f) {
@@ -7838,6 +7929,24 @@ finally {
         if (savedTick <= 0) {
             say("no save: {}{} dies in {}t (max {}t, best +{}t -> {}t of {})", isDown ? "press" : "release", tickTagText, baseDelay, maxDelayTicks,
                 debugBestDelay, debugBestResult, horizonTicks);
+            // v1.3.2: if this input is clearly fatal and delay cannot fix it, swallow it
+            // instead of sending a death click — gives the next inputs a cleaner chance.
+            // Presses: block when death is near. Wave releases: block only if holding is safer.
+            int fatalWindow = st(hasWave || hasShip ? 18 : 12);
+            if (state.blockUnsafeInputs && isDown && baseDelay < fatalWindow) {
+                say("blocked unsafe press (would die in {}t)", baseDelay);
+                playHelpSound();
+                // Keep previous held state — do not apply this press
+                return true;
+            }
+            if (state.blockUnsafeInputs && !isDown && (hasWave || hasShip) && state.hasAppliedInput) {
+                // Releasing now dies soon: keep holding instead of applying fatal release
+                if (baseDelay < fatalWindow) {
+                    say("blocked unsafe release (would die in {}t)", baseDelay);
+                    playHelpSound();
+                    return true;
+                }
+            }
             state.hasAppliedInput = isDown;
             return false;
         }
@@ -7921,6 +8030,14 @@ finally {
 
     void deliverPending(PlayLayer* gameLayer, PlayerObject* playerObject) {
         if (gameLayer->m_isPaused) {
+            return;
+        }
+        // Never apply buffered presses while dead / between attempts
+        if (!playerObject || playerObject->m_isDead) {
+            resetPending();
+            state.inputShiftTicks = 0;
+            state.releaseShiftTicks = 0;
+            state.hasAppliedInput = false;
             return;
         }
         if (state.ticksSinceInput <= 998) {
@@ -8054,7 +8171,11 @@ class $modify(BufPlayLayer, PlayLayer) {
         }
         resetPending();
         state.hasAppliedInput = false;
+        state.hasRealInput = false;
+        state.inputShiftTicks = 0;
+        state.releaseShiftTicks = 0;
         state.rapidInputTicks = 0;
+        state.wasAutoReleased = false;
         forgetPress();
     }
 
@@ -8092,7 +8213,11 @@ class $modify(BufPlayLayer, PlayLayer) {
         resetPending();
         forgetPress();
         state.hasAppliedInput = false;
+        state.hasRealInput = false;
         state.wasAutoReleased = false;
+        state.inputShiftTicks = 0;
+        state.releaseShiftTicks = 0;
+        state.rapidInputTicks = 0;
         PlayLayer::resetLevel();
     }
 
