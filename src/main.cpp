@@ -2808,9 +2808,8 @@ finally {
 
     char const* assistName(int index) {
         static char const* names[ASSIST_COUNT] = {
-            "help sound", "block unsafe", "practice only", "smart predict",
-            "wave auto-rel", "auto-rel normal", "ship buffer", "low latency",
-            "wave margin", "show path"
+            "help sound", "block unsafe", "practice only",
+            "smart predict", "wave auto-rel", "auto-rel normal"
         };
         if (index < 0 || index >= ASSIST_COUNT) return "";
         return names[index];
@@ -3390,6 +3389,7 @@ finally {
             StageSlot,
             Tab,
             Chip,
+            AssistToggle,
             Theme,
             SettingsRow,
             SettingsStep,
