@@ -132,15 +132,16 @@ namespace {
         bool isCustom;
     };
 
+    // v1.2: basu-style safer stages (wave caps lower so early-click delay is less aggressive)
     constexpr Stage STAGE_TABLE[] = {
-        { true, 2, 2, false },
-        { true, 4, 4, false },
-        { true, 8, 8, false },
-        { true, 16, 8, false },
+        { true, 2, 2, false },    // 0.5f — minimal
+        { true, 4, 3, false },    // ~1f
+        { true, 8, 5, false },
+        { true, 12, 7, false },
+        { true, 16, 9, false },
         { true, 24, 12, false },
-        { true, 32, 16, false },
-        { true, 40, 20, false },
-        { false, 0, 0, false },
+        { true, 32, 14, false },
+        { false, 0, 0, false },   // raw
     };
     constexpr int STAGE_TABLE_SIZE = sizeof(STAGE_TABLE) / sizeof(STAGE_TABLE[0]);
 
@@ -2433,8 +2434,8 @@ finally {
     constexpr float CONFIG_BUTTON_GAP = 10.f;
     constexpr float CONFIG_EXPORT_X = CONFIG_BUTTON_X + CONFIG_BUTTON_WIDTH + CONFIG_BUTTON_GAP;
 
-    constexpr int CHIP_COUNT = 3;
-    constexpr float CHIP_WIDTH = 118.f;
+    constexpr int CHIP_COUNT = 6;
+    constexpr float CHIP_WIDTH = 96.f;
     constexpr float CHIP_HEIGHT = 30.f;
     constexpr float CHIP_GAP = 3.f;
     constexpr float CHIP_Y = 22.f;
@@ -2784,7 +2785,8 @@ finally {
     }
 
     char const* chipName(int index) {
-        static char const* names[CHIP_COUNT] = { "console", "wave", "path" };
+        // F9 main toggles (also synced to Geode settings where applicable)
+        static char const* names[CHIP_COUNT] = { "sound", "practice", "ship", "auto-rel", "margin", "path" };
         if (index < 0 || index >= CHIP_COUNT) {
             return "";
         }
@@ -2889,7 +2891,7 @@ finally {
 
     char const* stageName(int index) {
         static char const* names[STAGE_TABLE_SIZE] = {
-            "tight", "quick", "steady", "flow", "deep", "wide", "max", "raw",
+            "min", "light", "safe", "mid", "strong", "heavy", "max", "raw",
         };
         if (index < 0 || index >= STAGE_TABLE_SIZE) {
             return "unknown";
@@ -3945,6 +3947,22 @@ finally {
             m_creditsButton = button;
         }
 
+        // v1.2: gameplay chips on the main deck (sound / practice / ship / auto-rel / margin / path)
+        m_chipBar = makeDrawNode();
+        if (m_chipBar) {
+            m_deck->addChild(m_chipBar, 2);
+        }
+        for (int index = 0; index < CHIP_COUNT; ++index) {
+            auto cell = chipRect(index);
+            if (auto* label = makeLabel(chipName(index), false, 0.42f, softTextColor())) {
+                label->setAnchorPoint(CCPoint(0.f, 0.5f));
+                label->setPosition(CCPoint(cell.getMinX() + 22.f, cell.getMidY()));
+                fitLabelToWidth(label, cell.size.width - 28.f);
+                m_deck->addChild(label, 3);
+                m_chipLabels[index] = label;
+            }
+        }
+
         applyTab();
         buildTutorialLayer();
     }
@@ -4311,7 +4329,14 @@ finally {
             return;
         }
         m_chipBar->clear();
-        bool values[CHIP_COUNT] = { state.consoleEnabled, state.waveMarginEnabled, state.showPathEnabled };
+        bool values[CHIP_COUNT] = {
+            state.helpSoundEnabled,
+            state.practiceModeOnly,
+            state.shipBufferEnabled,
+            state.autoReleaseEnabled,
+            state.waveMarginEnabled,
+            state.showPathEnabled
+        };
         for (int index = 0; index < CHIP_COUNT; ++index) {
             auto cell = chipRect(index);
             float dotX = cell.getMinX() + 12.f;
@@ -4423,6 +4448,8 @@ finally {
         if (!m_deck) {
             return;
         }
+
+        applyChip();
 
         ccColor3B live = state.isEnabled ? accentColor() : warningColor();
 
@@ -5922,6 +5949,12 @@ finally {
                 }
             }
         }
+        for (int index = 0; index < CHIP_COUNT; ++index) {
+            if (chipRect(index).containsPoint(point)) {
+                if (stageSlot) { *stageSlot = index; }
+                return HitTarget::Chip;
+            }
+        }
         return HitTarget::None;
     }
 
@@ -6020,6 +6053,38 @@ finally {
                 Mod::get()->setSettingValue<bool>("ui-glow", !getUIGlow());
                 rebuildDeck();
             }
+            return;
+        }
+
+        if (target == HitTarget::Chip) {
+            int index = m_pressedStageSlot;
+            auto* mod = Mod::get();
+            if (index == 0) {
+                state.helpSoundEnabled = !state.helpSoundEnabled;
+                mod->setSettingValue<bool>("help-sound", state.helpSoundEnabled);
+                say("help sound {}", state.helpSoundEnabled ? "on" : "off");
+            } else if (index == 1) {
+                state.practiceModeOnly = !state.practiceModeOnly;
+                mod->setSettingValue<bool>("practice-only", state.practiceModeOnly);
+                say("practice only {}", state.practiceModeOnly ? "on" : "off");
+            } else if (index == 2) {
+                state.shipBufferEnabled = !state.shipBufferEnabled;
+                mod->setSettingValue<bool>("ship-buffer", state.shipBufferEnabled);
+                say("ship buffer {}", state.shipBufferEnabled ? "on" : "off");
+            } else if (index == 3) {
+                state.autoReleaseEnabled = !state.autoReleaseEnabled;
+                mod->setSettingValue<bool>("wave-auto-release", state.autoReleaseEnabled);
+                say("wave auto-release {}", state.autoReleaseEnabled ? "on" : "off");
+            } else if (index == 4) {
+                state.waveMarginEnabled = !state.waveMarginEnabled;
+                mod->setSettingValue<bool>("wave-safety-margin", state.waveMarginEnabled);
+                say("wave margin {}", state.waveMarginEnabled ? "on" : "off");
+            } else if (index == 5) {
+                state.showPathEnabled = !state.showPathEnabled;
+                mod->setSettingValue<bool>("show-path", state.showPathEnabled);
+                say("show path {}", state.showPathEnabled ? "on" : "off");
+            }
+            refresh();
             return;
         }
 
@@ -7670,7 +7735,8 @@ finally {
         int landingTick = 0;
         int savedTick = 0;
         isCrashFixed = false;
-        int neededTicks = (isGroundPress || isRobotPress || isUfoPress) ? horizonTicks : std::min(horizonTicks, baseDelay + st(12));
+        // v1.2: require more room after the predicted crash so tight "saves" that still die are rejected
+        int neededTicks = (isGroundPress || isRobotPress || isUfoPress) ? horizonTicks : std::min(horizonTicks, baseDelay + st(20));
 
         savedTick = isCubeStyleWave ? searchWave(playLayer, player1, player2, isDual, isDown, horizonTicks, maxDelayTicks, baseDelay, &landingTick)
               : isRobotPress    ? searchTwoPass(horizonTicks, maxDelayTicks, baseDelay, &landingTick, [&](int candidateDelay, int targetTick, SimEnd* simulationEnd) {

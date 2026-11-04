@@ -8,9 +8,9 @@
     },
     "id": "apex.buffer",
     "name": "ApexBuffer",
-    "version": "1.1.2",
+    "version": "1.2.0",
     "developer": "Apex",
-    "description": "Predictive input buffer with polished UI. Retimes early clicks. Gameplay settings included.",
+    "description": "Predictive input buffer with Afterflow-style UI. Safer basu-style stages, stricter save checks, and gameplay chips on the main F9 panel.",
     "tags": [
         "gameplay",
         "utility"
