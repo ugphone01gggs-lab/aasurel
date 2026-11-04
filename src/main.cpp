@@ -349,6 +349,7 @@ namespace {
 
         bool lowLatencyMode = false;
         bool explainEnabled = false;
+        bool helpSoundEnabled = true;
         bool deathLogEnabled = false;
         bool captureKillerObject = false;
         bool hasBaseTouchedDown = false;
@@ -2202,21 +2203,32 @@ finally {
         state.releaseShiftTicks = 0;
     }
 
+    void playHelpSound() {
+        if (!state.helpSoundEnabled) {
+            return;
+        }
+        // Short UI tick — same family of clicks GD uses in menus
+        if (auto* audio = FMODAudioEngine::sharedEngine()) {
+            audio->playEffect("achievement_01.ogg");
+        }
+    }
+
     void readSettings() {
-        state.smartEnabled = true;
-        state.budgetMilliseconds = 8.0;
+        auto* mod = Mod::get();
+        state.smartEnabled = mod->getSettingValue<bool>("smart-prediction");
+        state.userBudgetMilliseconds = mod->getSettingValue<double>("sim-budget-ms");
+        state.budgetMilliseconds = state.userBudgetMilliseconds;
         state.automaticBudget = false;
-        state.practiceModeOnly = false;
-        state.groundHorizonTicks = 130;
-        state.waveHorizonTicks = 65;
+        state.practiceModeOnly = mod->getSettingValue<bool>("practice-only");
+        state.groundHorizonTicks = static_cast<int>(mod->getSettingValue<int64_t>("ground-horizon"));
+        state.waveHorizonTicks = static_cast<int>(mod->getSettingValue<int64_t>("wave-horizon"));
         state.assumeOrbHits = true;
         state.orbClickEnabled = true;
         state.tryBothOrbCandidates = true;
-        state.avoidMovingObjects = false;
-        state.autoReleaseEnabled = false;
-        state.autoReleaseWindowTicks = 6;
-        state.driftCheckEnabled = false;
-        state.spamGapTicks = 16;
+        state.avoidMovingObjects = mod->getSettingValue<bool>("avoid-moving-objects");
+        state.autoReleaseEnabled = mod->getSettingValue<bool>("wave-auto-release");
+        state.autoReleaseWindowTicks = static_cast<int>(mod->getSettingValue<int64_t>("auto-release-window"));
+        state.spamGapTicks = static_cast<int>(mod->getSettingValue<int64_t>("wave-spam-gap"));
         state.orbAlignEnabled = true;
         state.orbTimingEnabled = true;
         state.orbAlignToGround = false;
@@ -2233,27 +2245,27 @@ finally {
         state.moreTimeEnabled = false;
         state.dashAutoReleaseEnabled = false;
         state.performanceLogEnabled = false;
-        state.shipBufferEnabled = true;
+        state.shipBufferEnabled = mod->getSettingValue<bool>("ship-buffer");
         state.lateCrashTicks = 90;
         state.robustSaveMode = false;
         state.ignoreTouchingObjects = true;
         state.deathLogEnabled = false;
-        state.explainEnabled = false;
-        state.lowLatencyMode = false;
+        state.explainEnabled = mod->getSettingValue<bool>("explain-inputs");
+        state.helpSoundEnabled = mod->getSettingValue<bool>("help-sound");
+        state.lowLatencyMode = mod->getSettingValue<bool>("low-latency");
         state.predictMovingObjects = false;
         state.shipMaxDelayTicks = 4;
         state.shipSpamGapTicks = 6;
         state.clickBetweenFramesSync = true;
         state.robotAutoReleaseEnabled = false;
-        state.autoNormalRunsEnabled = false;
+        state.autoNormalRunsEnabled = mod->getSettingValue<bool>("auto-release-normal-runs");
         state.waveVersion46Mode = false;
-        state.waveMarginEnabled = true;
+        state.waveMarginEnabled = mod->getSettingValue<bool>("wave-safety-margin");
         state.orbWindowTicks = 6;
         state.performanceMode = false;
-        state.userBudgetMilliseconds = 8.0;
         state.wasAutoReleased = false;
         state.consoleEnabled = false;
-        state.showPathEnabled = false;
+        state.showPathEnabled = mod->getSettingValue<bool>("show-path");
     }
 
     void clickBudget() {
@@ -7705,6 +7717,7 @@ finally {
         say("saved {}{} +{}t ({:g}f)  {}->{}  [max {}]{}", isDown ? "press" : "release", tickTagText, savedTick, savedTick * TICK_DURATION, baseDelay, landingTick, maxDelayTicks,
             isCubeStyleWave && isMarginUsed ? std::string("  +margin")
             : isRobotPress ? fmt::format("  hold {}t", robotUsedHoldTicks) : std::string());
+        playHelpSound();
         state.inputShiftTicks = savedTick;
         queueInput(savedTick - earlyTicks, isDown);
         return true;

@@ -6,9 +6,9 @@
   },
   "id": "apex.buffer",
   "name": "ApexBuffer",
-  "version": "v1.0.0",
+  "version": "v1.1.0",
   "developer": "Apex",
-  "description": "Predictive input buffer with a polished control panel. Retimes your early clicks so they land clean — you still press, the mod only shifts timing. Customizable UI colors.",
+  "description": "Predictive input buffer with a polished control panel. Retimes your early clicks — you still press, the mod only shifts timing. Full gameplay settings + optional help sound.",
   "tags": [
     "gameplay",
     "utility"
@@ -149,6 +149,117 @@
         "android",
         "ios"
       ]
+    },
+    "gameplay-title": {
+      "type": "title",
+      "name": "gameplay",
+      "description": "prediction and assist options"
+    },
+    "help-sound": {
+      "type": "bool",
+      "name": "help sound",
+      "description": "Play a short sound when ApexBuffer saves/retimes an input for you.",
+      "default": true
+    },
+    "practice-only": {
+      "type": "bool",
+      "name": "practice mode only",
+      "description": "Only buffer inputs in practice mode. Off = also in normal runs.",
+      "default": false
+    },
+    "smart-prediction": {
+      "type": "bool",
+      "name": "orb / pad / portal prediction",
+      "description": "Let the ghost use orbs, pads, gravity and speed portals.",
+      "default": true
+    },
+    "sim-budget-ms": {
+      "type": "float",
+      "name": "prediction time budget (ms)",
+      "description": "Max time spent predicting per click. Higher finds longer saves but may hitch.",
+      "default": 8.0,
+      "min": 1.0,
+      "max": 30.0
+    },
+    "ground-horizon": {
+      "type": "int",
+      "name": "cube / ball lookahead (ticks)",
+      "description": "How far ahead cube/ball/spider prediction looks.",
+      "default": 130,
+      "min": 48,
+      "max": 240
+    },
+    "wave-horizon": {
+      "type": "int",
+      "name": "wave lookahead (ticks)",
+      "description": "How far ahead wave prediction looks (mini wave uses a bit less).",
+      "default": 65,
+      "min": 20,
+      "max": 160
+    },
+    "wave-auto-release": {
+      "type": "bool",
+      "name": "wave auto-release",
+      "description": "While you hold in wave, if holding would crash soon and releasing survives, release for you. Practice only unless normal-runs is on.",
+      "default": false
+    },
+    "auto-release-window": {
+      "type": "int",
+      "name": "auto-release window (ticks)",
+      "description": "Hold must die within this many ticks to auto-release.",
+      "default": 6,
+      "min": 2,
+      "max": 24
+    },
+    "auto-release-normal-runs": {
+      "type": "bool",
+      "name": "auto-release in normal runs",
+      "description": "Allow auto-release outside practice mode.",
+      "default": false
+    },
+    "ship-buffer": {
+      "type": "bool",
+      "name": "ship buffer",
+      "description": "Also buffer ship presses and releases.",
+      "default": true
+    },
+    "low-latency": {
+      "type": "bool",
+      "name": "low latency mode",
+      "description": "Shorter searches and smaller delays — less lag feel, fewer long saves.",
+      "default": false
+    },
+    "wave-safety-margin": {
+      "type": "bool",
+      "name": "wave safety margin",
+      "description": "Prefer a wave delay with a little room on both sides, not the razor-edge tick.",
+      "default": true
+    },
+    "show-path": {
+      "type": "bool",
+      "name": "show prediction path",
+      "description": "Draw the ghost path when a save is found (if supported in this build).",
+      "default": false
+    },
+    "explain-inputs": {
+      "type": "bool",
+      "name": "explain inputs (log)",
+      "description": "Log more detail about passes and skips to the panel/terminal log.",
+      "default": false
+    },
+    "avoid-moving-objects": {
+      "type": "bool",
+      "name": "avoid moving objects",
+      "description": "Do not trust a save if the ghost path crosses moving objects.",
+      "default": false
+    },
+    "wave-spam-gap": {
+      "type": "int",
+      "name": "wave spam max gap (ticks)",
+      "description": "Inputs closer than this count toward spam (then may pass through unbuffered).",
+      "default": 16,
+      "min": 4,
+      "max": 40
     }
   }
 }
