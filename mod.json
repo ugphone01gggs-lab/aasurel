@@ -8,9 +8,9 @@
     },
     "id": "apex.buffer",
     "name": "ApexBuffer",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "developer": "Apex",
-    "description": "Predictive input buffer with Afterflow-style UI. Safer basu-style stages, stricter save checks, and gameplay chips on the main F9 panel.",
+    "description": "Predictive input buffer. Safer stages, F9 chips, stronger wave/ship spam retiming and hold auto-release rescue (does not fully pilot for you).",
     "tags": [
         "gameplay",
         "utility"
@@ -181,12 +181,12 @@
         "wave-auto-release": {
             "type": "bool",
             "name": "wave auto-release",
-            "default": false
+            "default": true
         },
         "auto-release-window": {
             "type": "int",
             "name": "auto-release window (ticks)",
-            "default": 6,
+            "default": 8,
             "min": 2,
             "max": 24
         },

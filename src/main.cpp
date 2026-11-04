@@ -2227,7 +2227,7 @@ finally {
         state.orbClickEnabled = true;
         state.tryBothOrbCandidates = true;
         state.avoidMovingObjects = mod->getSettingValue<bool>("avoid-moving-objects");
-        state.autoReleaseEnabled = mod->getSettingValue<bool>("wave-auto-release");
+        state.autoReleaseEnabled = mod->getSettingValue<bool>("wave-auto-release"); // live hold rescue
         state.autoReleaseWindowTicks = static_cast<int>(mod->getSettingValue<int64_t>("auto-release-window"));
         state.spamGapTicks = static_cast<int>(mod->getSettingValue<int64_t>("wave-spam-gap"));
         state.orbAlignEnabled = true;
@@ -2255,7 +2255,7 @@ finally {
         state.helpSoundEnabled = mod->getSettingValue<bool>("help-sound");
         state.lowLatencyMode = mod->getSettingValue<bool>("low-latency");
         state.predictMovingObjects = false;
-        state.shipMaxDelayTicks = 4;
+        state.shipMaxDelayTicks = 12;
         state.shipSpamGapTicks = 6;
         state.clickBetweenFramesSync = true;
         state.robotAutoReleaseEnabled = false;
@@ -7306,6 +7306,8 @@ finally {
         return baseResult;
     }
 
+
+
     bool sameCrash(int candidateDelay, int candidateResult, int baseDelay, int& sameCrashStreak) {
         if (sameCrashStreak >= 0 && std::abs(candidateDelay + candidateResult - baseDelay) <= 1) {
             ++sameCrashStreak;
@@ -7542,6 +7544,71 @@ finally {
         state.queuedInputs.push_back({ tickCount, isDown });
     }
 
+    // Live hold rescue for wave / ship: if holding dies soon and releasing survives, inject release.
+    // Does not press for the player — only stops a fatal hold.
+    void tryVehicleHoldRescue(PlayLayer* playLayer, PlayerObject* player1) {
+        if (!playLayer || !player1 || !state.isEnabled || state.isSimulating || state.isInjecting) {
+            return;
+        }
+        if (state.wasAutoReleased) {
+            return;
+        }
+        if (!state.queuedInputs.empty()) {
+            return;
+        }
+        // Must actually be holding jump
+        if (!state.hasAppliedInput && !state.hasRealInput) {
+            return;
+        }
+        bool const isWave = player1->m_isDart;
+        bool const isShip = player1->m_isShip;
+        if (!isWave && !isShip) {
+            return;
+        }
+        if (isWave && !state.autoReleaseEnabled) {
+            return;
+        }
+        if (isShip && !state.shipBufferEnabled) {
+            return;
+        }
+        if (state.practiceModeOnly && !playLayer->m_isPracticeMode && !state.autoNormalRunsEnabled) {
+            return;
+        }
+        if (player1->m_isDead || playLayer->m_isPaused) {
+            return;
+        }
+
+        int windowTicks = std::clamp(state.autoReleaseWindowTicks, 2, 24);
+        int horizonTicks = isWave ? std::max(state.waveHorizonTicks, 40) : 48;
+        bool isDual = playLayer->m_gameState.m_isDualMode && playLayer->m_player2;
+        auto* player2 = isDual ? playLayer->m_player2 : nullptr;
+
+        SimEnd holdEnd{};
+        SimEnd releaseEnd{};
+        int holdSurvive = 0;
+        int releaseSurvive = 0;
+        if (isWave) {
+            holdSurvive = waveScore(playLayer, player1, player2, isDual, 0, true, horizonTicks, horizonTicks, &holdEnd);
+            releaseSurvive = waveScore(playLayer, player1, player2, isDual, 0, false, horizonTicks, horizonTicks, &releaseEnd);
+        } else {
+            holdSurvive = shipScore(playLayer, player1, player2, isDual, 0, true, horizonTicks, horizonTicks, &holdEnd);
+            releaseSurvive = shipScore(playLayer, player1, player2, isDual, 0, false, horizonTicks, horizonTicks, &releaseEnd);
+        }
+
+        if (holdSurvive < st(windowTicks) && releaseSurvive > holdSurvive + st(2)) {
+            state.wasAutoReleased = true;
+            state.isInjecting = true;
+            playLayer->handleButton(false, 1, true);
+            state.isInjecting = false;
+            state.hasAppliedInput = false;
+            state.hasRealInput = false;
+            say("{} auto-release rescue (hold {}t / release {}t)", isWave ? "wave" : "ship", holdSurvive, releaseSurvive);
+            playHelpSound();
+        }
+    }
+
+
+
     bool intercept(GJBaseGameLayer* baseGameLayer, bool isDown, bool isFirstPlayer) {
         clickStartTime = std::chrono::steady_clock::now();
         clickBudget();
@@ -7564,6 +7631,9 @@ finally {
 
         state.isFirstPlayer = isFirstPlayer;
         state.hasRealInput = isDown;
+        if (isDown) {
+            state.wasAutoReleased = false;
+        }
         state.intendedOrbObject = nullptr;
         if (!state.isEnabled) {
             state.hasAppliedInput = isDown;
@@ -7637,8 +7707,11 @@ finally {
                 state.inputShiftTicks = 0;
                 return true;
             }
-            state.hasAppliedInput = isDown;
-            return false;
+            // v1.3: wave/ship still run prediction while spamming (old path passed input raw)
+            if (!(hasWave || hasShip)) {
+                state.hasAppliedInput = isDown;
+                return false;
+            }
         }
 
         if (!state.queuedInputs.empty()) {
@@ -7679,6 +7752,14 @@ finally {
             horizonTicks = fullWaveHorizon(isMini);
         }
         int maxDelayTicks = st(hasWave ? state.ticksWaveMode : (hasShip ? std::clamp(state.shipMaxDelayTicks, 0, 16) : state.ticksAllModes));
+        if (hasWave) {
+            // Prefer enough room to retime early spam presses/releases on wave
+            maxDelayTicks = st(std::max({ state.ticksWaveMode, (state.ticksAllModes * 2) / 3, 10 }));
+            maxDelayTicks = std::min(maxDelayTicks, st(40));
+        } else if (hasShip) {
+            maxDelayTicks = st(std::max({ state.shipMaxDelayTicks, state.ticksAllModes / 2, 10 }));
+            maxDelayTicks = std::min(maxDelayTicks, st(24));
+        }
         if (maxDelayTicks <= 0) {
             state.hasAppliedInput = isDown;
             return false;
@@ -8455,6 +8536,7 @@ class $modify(BufPlayerObject, PlayerObject) {
             ++currentTick;
             if (state.isEnabled) {
                 deliverPending(gameLayer, this);
+                tryVehicleHoldRescue(gameLayer, this);
             }
         }
 
