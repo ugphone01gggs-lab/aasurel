@@ -8,7 +8,7 @@
     },
     "id": "apex.buffer",
     "name": "ApexBuffer",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "developer": "Apex",
     "description": "Predictive input buffer. Retimes early clicks, blocks clearly fatal presses/releases when delay cannot save them, share codes, F9 chips.",
     "tags": [
@@ -151,6 +151,20 @@
             "type": "bool",
             "name": "block unsafe presses",
             "description": "If a press/release would die soon and delay cannot fix it, cancel that input instead of sending a death click.",
+            "default": true
+        },
+        "delay-window-ms": {
+            "type": "int",
+            "name": "delay window (ms)",
+            "description": "How far early/late a press may be shifted. Higher = can correct presses that are further from the ideal timing (e.g. 50ms early when ideal was 20ms). ~4ms ≈ 1 internal tick step.",
+            "default": 50,
+            "min": 0,
+            "max": 200
+        },
+        "precision-timing": {
+            "type": "bool",
+            "name": "precision timing",
+            "description": "When delaying an input, pick the delay tick that survives longest (closest to a clean safe timing) instead of the first workable delay.",
             "default": true
         },
         "practice-only": {

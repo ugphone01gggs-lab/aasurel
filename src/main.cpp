@@ -352,6 +352,8 @@ namespace {
         bool explainEnabled = false;
         bool helpSoundEnabled = true;
         bool blockUnsafeInputs = true;
+        int delayWindowMs = 50;      // how far early clicks may be shifted
+        bool precisionTiming = true; // pick the safest exact delay tick
         bool deathLogEnabled = false;
         bool captureKillerObject = false;
         bool hasBaseTouchedDown = false;
@@ -2255,6 +2257,8 @@ finally {
         state.explainEnabled = mod->getSettingValue<bool>("explain-inputs");
         state.helpSoundEnabled = mod->getSettingValue<bool>("help-sound");
         state.blockUnsafeInputs = mod->getSettingValue<bool>("block-unsafe-inputs");
+        state.delayWindowMs = static_cast<int>(mod->getSettingValue<int64_t>("delay-window-ms"));
+        state.precisionTiming = mod->getSettingValue<bool>("precision-timing");
         state.lowLatencyMode = mod->getSettingValue<bool>("low-latency");
         state.predictMovingObjects = false;
         state.shipMaxDelayTicks = 12;
@@ -4493,7 +4497,7 @@ finally {
         }
     }
 
-
+    
     void ApexOverlay::applyAssist() {
         if (!m_assistBar) {
             return;
@@ -8051,6 +8055,14 @@ std::vector<int>& ApexOverlay::modeSlots() {
             maxDelayTicks = st(std::max({ state.shipMaxDelayTicks, state.ticksAllModes / 2, 10 }));
             maxDelayTicks = std::min(maxDelayTicks, st(24));
         }
+        // delay-window-ms: extra search width beyond stage (4 ticks ≈ 1 frame ≈ 16.7ms @ 60fps)
+        {
+            int windowMs = std::clamp(state.delayWindowMs, 0, 200);
+            // convert ms → ticks using ~4.17ms per tick at 60fps (4 ticks per frame)
+            int windowTicks = (windowMs + 3) / 4; // ceil-ish to ticks in "frame quarter" units used by stage table
+            if (windowTicks < 1 && windowMs > 0) windowTicks = 1;
+            maxDelayTicks = st(std::min(maxDelayTicks + windowTicks, hasWave ? 48 : (hasShip ? 32 : 40)));
+        }
         if (maxDelayTicks <= 0) {
             state.hasAppliedInput = isDown;
             return false;
@@ -8170,12 +8182,38 @@ std::vector<int>& ApexOverlay::modeSlots() {
         if (isRobotPress) {
             releaseAfterTicks = robotUsedHoldTicks;
         }
+        // Precision timing: within the allowed window, pick the delay that survives longest
+        // (closest to the "perfect" safe tick instead of the first workable delay)
+        if (state.precisionTiming && savedTick > 0 && maxDelayTicks > savedTick) {
+            int bestDelay = savedTick;
+            int bestSurvive = landingTick;
+            int scanHi = std::min(maxDelayTicks, savedTick + st(8));
+            for (int d = std::max(1, savedTick - st(2)); d <= scanHi; ++d) {
+                SimEnd end{};
+                int survive = isCubeStyleWave
+                    ? waveScore(playLayer, player1, player2, isDual, d, isDown, horizonTicks, horizonTicks, &end)
+                    : isShipInput
+                        ? shipScore(playLayer, player1, player2, isDual, d, isDown, horizonTicks, horizonTicks, &end)
+                        : simulateOrbs(playLayer, player1, player2, isDual, d, isDown, horizonTicks, releaseAfterTicks, horizonTicks, &end);
+                if (survive > bestSurvive) {
+                    bestSurvive = survive;
+                    bestDelay = d;
+                }
+            }
+            if (bestDelay != savedTick) {
+                say("precision retune +{}t -> +{}t (survive {}t)", savedTick, bestDelay, bestSurvive);
+                savedTick = bestDelay;
+                landingTick = bestSurvive;
+            }
+        }
+
         say("saved {}{} +{}t ({:g}f)  {}->{}  [max {}]{}", isDown ? "press" : "release", tickTagText, savedTick, savedTick * TICK_DURATION, baseDelay, landingTick, maxDelayTicks,
             isCubeStyleWave && isMarginUsed ? std::string("  +margin")
             : isRobotPress ? fmt::format("  hold {}t", robotUsedHoldTicks) : std::string());
         playHelpSound();
         state.inputShiftTicks = savedTick;
-        queueInput(savedTick - earlyTicks, isDown);
+        // Deliver as close as possible to the chosen tick (sub-tick already handled via earlyTicks)
+        queueInput(std::max(0, savedTick - earlyTicks), isDown);
         return true;
     }
 
