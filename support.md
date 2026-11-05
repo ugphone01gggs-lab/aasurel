@@ -1,6 +1,6 @@
 # support
 
-afterflow is a personal cheat mod. if something breaks report it to @prsevend on discord with:
+ApexBuffer is a personal cheat mod. if something breaks report it to @prsevend on discord with:
 
 - your geode version
 - your geometry dash version

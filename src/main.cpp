@@ -1715,6 +1715,18 @@ finally {
                     return;
                 }
 
+                // A .geode is a zip archive. Refuse anything else (e.g. an HTML error
+                // page from a proxy or a truncated body) before it overwrites the install.
+                bool isZipArchive = bytes.size() >= 1024
+                    && bytes[0] == 'P' && bytes[1] == 'K'
+                    && bytes[2] == 0x03 && bytes[3] == 0x04;
+                if (!isZipArchive) {
+                    geode::queueInMainThread([] {
+                        failUpdateDownload("download failed: not a valid .geode package");
+                    });
+                    return;
+                }
+
                 geode::queueInMainThread([bytes] {
                     setUpdateOverlayText("Installing... Please wait.");
                     setUpdateBar(1.f);
@@ -2441,7 +2453,7 @@ finally {
     constexpr float CONFIG_EXPORT_X = CONFIG_BUTTON_X + CONFIG_BUTTON_WIDTH + CONFIG_BUTTON_GAP;
     constexpr float CONFIG_INPUT_Y = 102.f;
     constexpr float CONFIG_INPUT_WIDTH = CONTENT_WIDTH - 40.f;
-    // F9 Assist section (gameplay toggles, themed like Afterflow pills)
+    // F9 Assist section (gameplay toggles, themed like ApexBuffer pills)
     constexpr int ASSIST_COUNT = 6;
     constexpr float ASSIST_CELL_W = (CONTENT_WIDTH - 32.f - 8.f) * 0.5f;
     constexpr float ASSIST_CELL_H = 26.f;

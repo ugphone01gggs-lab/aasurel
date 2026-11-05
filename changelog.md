@@ -1,3 +1,10 @@
+# v1.4.2
+
+- [fix] `tools/purge-unzipped.ps1` defaulted to the old mod id, so the stale-extraction guard never cleared `apex.buffer`. the default is now `apex.buffer` and CMake passes `-ModId apex.buffer` explicitly.
+- [fix] the in-game updater refuses any download that is not a zip-based `.geode` package, so an error page or truncated body can no longer overwrite the installed mod.
+- [build] `CMakeLists.txt` project version now matches `mod.json` and `version.txt` (1.4.2).
+- [docs] tool messages and `support.md` use the ApexBuffer name. entries below this line were written for the earlier afterflow project.
+
 # v2.2.4
 
 - **fix: ios crash at the end of the loading bar.** the panel was being built from `CCDirector::willSwitchToScene`, i.e. in the middle of the loading screen -> menu transition, and allocating fonts and sprites there is what kills ios. the overlay is now built on the next main thread tick, against whichever scene is running by then.

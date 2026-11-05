@@ -1,4 +1,4 @@
-# Removes Geode's extracted-mod cache for afterflow.
+# Removes Geode's extracted-mod cache for ApexBuffer.
 #
 # Geode unpacks a .geode into geode/unzipped/<mod-id>/ and only re-extracts when
 # the version string in mod.json changes. If you rebuild without bumping the
@@ -8,7 +8,7 @@
 # Deleting the extracted folder forces a fresh unpack on next launch.
 
 param(
-    [string]$ModId = 'afterflow.prsevend'
+    [string]$ModId = 'apex.buffer'
 )
 
 $ErrorActionPreference = 'SilentlyContinue'

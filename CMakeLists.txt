@@ -12,7 +12,7 @@ if (APPLE)
 endif()
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-project(ApexBuffer VERSION 1.0.0)
+project(ApexBuffer VERSION 1.4.2)
 
 # Add all source files inside src (recursively)
 set(SOURCES src/main.cpp)
@@ -62,8 +62,8 @@ if (APEXBUFFER_PURGE_UNZIPPED AND WIN32)
     if (EXISTS "${APEXBUFFER_PURGE_SCRIPT}")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND powershell -NoProfile -ExecutionPolicy Bypass
-                    -File "${APEXBUFFER_PURGE_SCRIPT}"
-            COMMENT "Clearing Geode extracted-mod cache (afterflow.prsevend)"
+                    -File "${APEXBUFFER_PURGE_SCRIPT}" -ModId apex.buffer
+            COMMENT "Clearing Geode extracted-mod cache (apex.buffer)"
             VERBATIM
         )
     endif()

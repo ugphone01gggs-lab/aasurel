@@ -5,14 +5,14 @@ A zstd-compressed .geode (zip compression method 93, which `geode package merge
 --zstd` produces) therefore lists its entries fine and extracts none of them, and
 the game reports:
 
-    Failed to load afterflow.prsevend: No binary could be found for current
+    Failed to load apex.buffer: No binary could be found for current
     platform. This mod doesn't support this platform.
 
 Only stored (0) and deflate (8) entries are safe. This check reads the central
 directory only, so it needs no decompressor and runs on any Python.
 
 Usage:
-    python tools/check-geode-compression.py build-clang/afterflow.prsevend.geode
+    python tools/check-geode-compression.py build-clang/apex.buffer.geode
     python tools/check-geode-compression.py build-clang/
 """
 

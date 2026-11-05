@@ -7,9 +7,9 @@ by the Geode build the players run. A missing Geode symbol makes dyld abort
 before any mod code runs, which reads exactly like "the game crashes on launch".
 
 Usage:
-    python tools/check-ios-linkage.py --geode ci-out/afterflow.prsevend.geode \
+    python tools/check-ios-linkage.py --geode ci-out/apex.buffer.geode \
                                       --geode-ios geode-v5.11.2-ios.zip \
-                                      --slice afterflow.prsevend.ios.dylib
+                                      --slice apex.buffer.ios.dylib
 
 The Geode iOS archives are published per release at
 https://github.com/geode-sdk/geode/releases (asset geode-<tag>-ios.zip).
@@ -81,7 +81,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--geode", required=True, help="packaged .geode to check")
     parser.add_argument("--geode-ios", required=True, help="geode-<tag>-ios.zip from a Geode release")
-    parser.add_argument("--slice", default="afterflow.prsevend.ios.dylib", help="entry name inside the .geode")
+    parser.add_argument("--slice", default="apex.buffer.ios.dylib", help="entry name inside the .geode")
     args = parser.parse_args()
 
     with zipfile.ZipFile(args.geode) as archive:
