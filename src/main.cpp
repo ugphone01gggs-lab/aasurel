@@ -2459,6 +2459,10 @@ finally {
     constexpr float ASSIST_CELL_H = 26.f;
     constexpr float ASSIST_GAP_X = 8.f;
     constexpr float ASSIST_GAP_Y = 4.f;
+    constexpr float ASSIST_TEXT_INSET = 10.f;
+    constexpr float ASSIST_SWITCH_W = 24.f;
+    constexpr float ASSIST_SWITCH_H = 12.f;
+    constexpr float ASSIST_SWITCH_INSET = 8.f;
     constexpr float ASSIST_ORIGIN_Y = 255.f;
 
     constexpr int CHIP_COUNT = 6;
@@ -3031,6 +3035,19 @@ finally {
         return stageLabelAt(index);
     }
 
+    void fitLabelInBox(CCLabelBMFont* label, float maxWidth, float maxHeight) {
+        if (!label || maxWidth <= 0.f || maxHeight <= 0.f) {
+            return;
+        }
+        auto size = label->getContentSize();
+        if (size.width <= 0.f || size.height <= 0.f) {
+            return;
+        }
+        float fit = std::min(maxWidth / size.width, maxHeight / size.height);
+        if (fit < label->getScale()) {
+            label->setScale(fit);
+        }
+    }
     void fitLabelToWidth(CCLabelBMFont* label, float maxWidth) {
         if (!label || maxWidth <= 0.f) {
             return;
@@ -3589,6 +3606,7 @@ finally {
         CCDrawNode* m_assistBar = nullptr;
         CCLabelBMFont* m_assistLabels[ASSIST_COUNT] = {};
         CCLabelBMFont* m_assistHeaderLabel = nullptr;
+        CCLabelBMFont* m_assistCountLabel = nullptr;
         CCNode* m_stageBackButton = nullptr;
         CCNode* m_stageForwardButton = nullptr;
         CCNode* m_copyButton = nullptr;
@@ -3690,6 +3708,7 @@ finally {
         m_chipBar = nullptr;
         m_assistBar = nullptr;
         m_assistHeaderLabel = nullptr;
+        m_assistCountLabel = nullptr;
         m_stageBackButton = nullptr;
         m_stageForwardButton = nullptr;
         m_copyButton = nullptr;
@@ -4026,6 +4045,12 @@ finally {
             m_assistHeaderLabel->setPosition(CCPoint(CONTENT_X + 18.f, ASSIST_ORIGIN_Y + 6.f));
             m_deck->addChild(m_assistHeaderLabel, 3);
         }
+        m_assistCountLabel = makeLabel("0/6 on", false, 0.42f, softTextColor());
+        if (m_assistCountLabel) {
+            m_assistCountLabel->setAnchorPoint(CCPoint(1.f, 0.5f));
+            m_assistCountLabel->setPosition(CCPoint(CONTENT_RIGHT - 18.f, ASSIST_ORIGIN_Y + 6.f));
+            m_deck->addChild(m_assistCountLabel, 3);
+        }
         m_assistBar = makeDrawNode();
         if (m_assistBar) {
             m_deck->addChild(m_assistBar, 2);
@@ -4034,8 +4059,8 @@ finally {
             auto rect = assistRect(index);
             if (auto* label = makeLabel(assistName(index), false, 0.48f, softTextColor())) {
                 label->setAnchorPoint(CCPoint(0.f, 0.5f));
-                label->setPosition(CCPoint(rect.getMinX() + 22.f, rect.getMidY()));
-                fitLabelToWidth(label, rect.size.width - 28.f);
+                label->setPosition(CCPoint(rect.getMinX() + ASSIST_TEXT_INSET, rect.getMidY()));
+                fitLabelInBox(label, rect.size.width - ASSIST_TEXT_INSET - ASSIST_SWITCH_W - 10.f, rect.size.height - 8.f);
                 m_deck->addChild(label, 3);
                 m_assistLabels[index] = label;
             }
@@ -4515,23 +4540,40 @@ finally {
             return;
         }
         m_assistBar->clear();
+        int onCount = 0;
         for (int index = 0; index < ASSIST_COUNT; ++index) {
             auto cell = assistRect(index);
             bool isOn = assistValue(index);
+            if (isOn) { ++onCount; }
             float radius = 5.f;
-            float dotX = cell.getMinX() + 12.f;
-            float dotY = cell.getMidY();
+
+            // cell background
             if (isOn) {
                 drawCurvedRect(m_assistBar, cell, radius, color4(accentColor(), 34), color4(accentColor(), 120), 1.f);
-                m_assistBar->drawCircle(CCPoint(dotX, dotY), 4.f, color4(accentColor(), 255), 0.f, color4(0, 0, 0, 0), 18);
             } else {
                 drawCurvedRect(m_assistBar, cell, radius, panelTint(8), panelTint(26), 1.f);
-                m_assistBar->drawCircle(CCPoint(dotX, dotY), 3.f, panelTint(70), 0.f, color4(0, 0, 0, 0), 18);
             }
+
+            // switch on the right edge of the cell
+            float trackX = cell.getMaxX() - ASSIST_SWITCH_INSET - ASSIST_SWITCH_W;
+            float trackY = cell.getMidY() - ASSIST_SWITCH_H * 0.5f;
+            CCRect track(trackX, trackY, ASSIST_SWITCH_W, ASSIST_SWITCH_H);
+            float trackRadius = ASSIST_SWITCH_H * 0.5f;
+            if (isOn) {
+                drawCurvedRect(m_assistBar, track, trackRadius, color4(accentColor(), 200), color4(accentColor(), 255), 1.f);
+                m_assistBar->drawCircle(CCPoint(trackX + ASSIST_SWITCH_W - trackRadius, cell.getMidY()), trackRadius - 2.f, color4(255, 255, 255, 255), 0.f, color4(0, 0, 0, 0), 18);
+            } else {
+                drawCurvedRect(m_assistBar, track, trackRadius, panelTint(14), panelTint(40), 1.f);
+                m_assistBar->drawCircle(CCPoint(trackX + trackRadius, cell.getMidY()), trackRadius - 2.f, panelTint(70), 0.f, color4(0, 0, 0, 0), 18);
+            }
+
             if (m_assistLabels[index]) {
                 m_assistLabels[index]->setColor(isOn ? logTextColor() : softTextColor());
                 m_assistLabels[index]->setOpacity(isOn ? 255 : 190);
             }
+        }
+        if (m_assistCountLabel) {
+            m_assistCountLabel->setString(fmt::format("{}/{} on", onCount, ASSIST_COUNT).c_str());
         }
     }
 
@@ -4605,6 +4647,7 @@ void ApexOverlay::applyTab() {
         if (m_modeIconContainer) { m_modeIconContainer->setVisible(showSettings); }
         if (m_configInput) { m_configInput->setVisible(showSettings); }
         if (m_assistHeaderLabel) { m_assistHeaderLabel->setVisible(showSettings); }
+        if (m_assistCountLabel) { m_assistCountLabel->setVisible(showSettings); }
         if (m_assistBar) { m_assistBar->setVisible(showSettings); }
         for (int i = 0; i < ASSIST_COUNT; ++i) {
             if (m_assistLabels[i]) { m_assistLabels[i]->setVisible(showSettings); }
